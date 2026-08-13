@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Datenfluss-Karte – Alpenkafi GmbH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --papier:#ECEEE9; --karte:#FFFFFF; --tinte:#171B1D; --grau:#5C6467;
+  --linie:#D8DCD4; --feld:#F4F6F1; --rot:#C8102E; --amber:#8A5A00; --amberbg:#F6E7C8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--papier);color:var(--tinte);
+  font:400 16px/1.55 "IBM Plex Sans",-apple-system,"Segoe UI",sans-serif;
+  padding:40px 16px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+a{color:var(--tinte)}
+a:focus-visible,button:focus-visible{outline:3px solid var(--rot);outline-offset:2px}
+.karte{max-width:880px;margin:0 auto;background:var(--karte);
+  border:1px solid var(--linie);border-radius:10px;overflow:hidden}
+header{padding:36px 40px 28px;border-bottom:1px solid var(--linie)}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--grau)}
+h1{font-family:Archivo,"IBM Plex Sans",sans-serif;font-weight:700;
+  font-size:clamp(28px,5vw,40px);letter-spacing:-.01em;margin:8px 0 10px}
+.meta{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--grau);
+  display:flex;flex-wrap:wrap;gap:6px 18px}
+.meta a{color:var(--grau)}
+.fakten{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--linie)}
+.fakt{padding:16px 40px;border-right:1px solid var(--linie)}
+.fakt:nth-child(3n){border-right:0}
+.fakt:nth-child(n+4){border-top:1px solid var(--linie)}
+.fakt b{display:block;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:17px}
+.fakt span{font-size:12.5px;color:var(--grau)}
+.rechte{margin:28px 40px;padding:20px 24px;background:var(--feld);
+  border-left:4px solid var(--rot);border-radius:0 8px 8px 0}
+.rechte h2{font-family:Archivo,sans-serif;font-size:18px;margin-bottom:6px}
+.rechte p{font-size:14.5px;color:var(--grau);max-width:60ch}
+.rechte-aktionen{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px}
+.knopf{display:inline-block;font:600 14px/1 "IBM Plex Sans",sans-serif;
+  padding:11px 16px;border-radius:7px;text-decoration:none;
+  background:var(--tinte);color:#fff;border:1px solid var(--tinte)}
+.knopf.zweit{background:transparent;color:var(--tinte)}
+.rechte .frist{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--grau);margin-top:12px}
+main{padding:8px 40px 8px}
+main>h2{font-family:Archivo,sans-serif;font-size:14px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--grau);margin:24px 0 4px}
+.bearbeitung{padding:22px 0 26px;border-bottom:1px solid var(--linie)}
+.bearbeitung:last-of-type{border-bottom:0}
+.bearbeitung h3{font-family:Archivo,sans-serif;font-size:21px;margin-bottom:4px}
+.b-text{font-size:14.5px;color:var(--grau);max-width:70ch;margin-bottom:14px}
+.fluss{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;
+  background:var(--feld);border:1px solid var(--linie);border-radius:8px;
+  padding:14px 16px;margin:10px 0 16px}
+.pfeil{align-self:center;font-family:"IBM Plex Mono",monospace;color:var(--grau)}
+.knoten{display:flex;flex-direction:column;justify-content:center;gap:2px;
+  background:var(--karte);border:1px solid var(--linie);border-radius:7px;
+  padding:9px 12px;min-width:150px}
+.knoten-quelle{background:var(--tinte);border-color:var(--tinte);color:#fff;min-width:auto}
+.knoten-intern{border-style:dashed;background:transparent}
+.knoten-name{font-weight:600;font-size:14px}
+.knoten-dienst{font-size:12.5px;color:var(--grau)}
+.knoten-meta{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--grau)}
+.knoten-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:2px 7px;
+  border:1px solid var(--linie);border-radius:99px;color:var(--grau);background:var(--karte)}
+.tag-dritt{color:var(--amber);border-color:var(--amber);background:var(--amberbg)}
+.b-fakten div{display:grid;grid-template-columns:170px 1fr;gap:10px;
+  padding:7px 0;border-top:1px dashed var(--linie);align-items:baseline}
+.b-fakten dt{font-family:"IBM Plex Mono",monospace;font-size:12px;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--grau)}
+.b-fakten dd{font-size:14px}
+.chip{display:inline-block;background:var(--feld);border:1px solid var(--linie);
+  border-radius:99px;padding:3px 10px;font-size:12.5px;margin:2px 4px 2px 0}
+footer{padding:22px 40px 30px;border-top:1px solid var(--linie);
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--grau);
+  display:flex;flex-wrap:wrap;gap:6px 20px;justify-content:space-between}
+@media(max-width:640px){
+  body{padding:16px 8px}
+  header,main,.rechte,footer{padding-left:20px;padding-right:20px}
+  .rechte{margin:20px}
+  .fakten{grid-template-columns:1fr 1fr}
+  .fakt{padding:14px 20px;border-right:0}
+  .fakt:nth-child(odd){border-right:1px solid var(--linie)}
+  .fakt:nth-child(n+3){border-top:1px solid var(--linie)}
+  .fluss{flex-direction:column;align-items:stretch}
+  .pfeil{align-self:flex-start;transform:rotate(90deg);margin-left:14px}
+  .b-fakten div{grid-template-columns:1fr}
+}
+@media print{
+  body{background:#fff;padding:0}
+  .karte{border:0;border-radius:0;max-width:none}
+  .knopf{border:1px solid var(--tinte);background:#fff;color:var(--tinte)}
+}
+</style>
+</head>
+<body>
+<div class="karte">
+<header>
+  <p class="kicker">Datenfluss-Karte · Spezifikation v0.1</p>
+  <h1>Alpenkafi GmbH</h1>
+  <p class="meta"><span>CHE-123.456.789</span><a href="https://www.alpenkafi.example">https://www.alpenkafi.example</a><span>Stand 2026-08-13</span></p>
+</header>
+<div class="fakten"><div class="fakt"><b>4</b><span>Bearbeitungen</span></div><div class="fakt"><b>5</b><span>externe Empfänger</span></div><div class="fakt"><b>🇨🇭 🇮🇪 🇺🇸</b><span>Länder: CH, IE, US</span></div><div class="fakt"><b>Ja</b><span>Empfänger ausserhalb angemessener Staaten</span></div><div class="fakt"><b>Ja</b><span>Profiling</span></div><div class="fakt"><b>Nein</b><span>Besonders schützenswerte Daten</span></div></div>
+<div class="rechte">
+  <h2>Ihre Daten, Ihr Recht</h2>
+  <p>Sie können jederzeit kostenlos erfahren, welche Daten diese Organisation über Sie bearbeitet, und deren Berichtigung oder Löschung verlangen. Wir verlangen eine Ausweiskopie nur, wenn begruendete Zweifel an der Identitaet bestehen.</p>
+  <div class="rechte-aktionen"><a class="knopf" href="mailto:datenschutz@alpenkafi.example?subject=Auskunftsbegehren nach Art. 25 DSG – Alpenkafi GmbH">Auskunft per E-Mail anfragen</a><a class="knopf zweit" href="https://www.alpenkafi.example/datenschutz/auskunft">Auskunftsformular öffnen</a></div>
+  <p class="frist">Zugesicherte Antwortfrist: 30 Tage</p>
+</div>
+<main>
+  <h2>Bearbeitungen und ihre Empfänger</h2>
+  
+<section class="bearbeitung" id="shop-bestellungen">
+  <h3>Webshop-Bestellungen</h3>
+  <p class="b-text">Abwicklung von Bestellungen im Online-Shop inkl. Zahlung, Versand und Buchhaltung.</p>
+  <div class="fluss" role="img" aria-label="Datenfluss dieser Bearbeitung">
+    <span class="knoten knoten-quelle"><span class="knoten-name">Ihre Daten</span></span>
+    <span class="pfeil" aria-hidden="true">→</span><span class="knoten"><span class="knoten-name">Stripe Payments Europe Ltd.</span><span class="knoten-dienst">Zahlungsabwicklung Kreditkarte/TWINT</span><span class="knoten-meta">🇮🇪 Irland · Auftragsbearbeiter</span><span class="knoten-tags"><span class="tag">Angemessenes Schutzniveau</span></span></span><span class="pfeil" aria-hidden="true">→</span><span class="knoten"><span class="knoten-name">Die Schweizerische Post AG</span><span class="knoten-dienst">Paketversand</span><span class="knoten-meta">🇨🇭 Schweiz · Eigenständig verantwortlich</span><span class="knoten-tags"><span class="tag">Angemessenes Schutzniveau</span></span></span><span class="pfeil" aria-hidden="true">→</span><span class="knoten"><span class="knoten-name">Treuhand Muster AG</span><span class="knoten-dienst">Buchhaltung</span><span class="knoten-meta">🇨🇭 Schweiz · Auftragsbearbeiter</span><span class="knoten-tags"><span class="tag">Angemessenes Schutzniveau</span></span></span>
+  </div>
+  <dl class="b-fakten">
+    <div><dt>Zwecke</dt><dd><span class="chip">Vertragsabwicklung</span><span class="chip">Buchhaltung</span><span class="chip">Rechtspflicht</span></dd></div>
+    <div><dt>Datenkategorien</dt><dd><span class="chip">Kontaktdaten</span><span class="chip">Bestelldaten</span><span class="chip">Zahlungsdaten</span></dd></div>
+    <div><dt>Aufbewahrung</dt><dd class="mono">10 Jahre · Gesetzliche Aufbewahrungspflicht fuer Geschaeftsbuecher (Art. 958f OR).</dd></div>
+    
+  </dl>
+</section>
+<section class="bearbeitung" id="newsletter">
+  <h3>Newsletter</h3>
+  <p class="b-text">Versand des monatlichen Kaffee-Newsletters an angemeldete Personen inkl. Auswertung von Oeffnungsraten.</p>
+  <div class="fluss" role="img" aria-label="Datenfluss dieser Bearbeitung">
+    <span class="knoten knoten-quelle"><span class="knoten-name">Ihre Daten</span></span>
+    <span class="pfeil" aria-hidden="true">→</span><span class="knoten"><span class="knoten-name">Intuit Inc. (Mailchimp)</span><span class="knoten-dienst">Newsletter-Versand</span><span class="knoten-meta">🇺🇸 USA · Auftragsbearbeiter</span><span class="knoten-tags"><span class="tag tag-dritt">Drittland</span><span class="tag">Swiss-U.S. DPF zertifiziert</span></span></span>
+  </div>
+  <dl class="b-fakten">
+    <div><dt>Zwecke</dt><dd><span class="chip">Marketing</span></dd></div>
+    <div><dt>Datenkategorien</dt><dd><span class="chip">Kontaktdaten</span><span class="chip">Nutzungsdaten</span></dd></div>
+    <div><dt>Aufbewahrung</dt><dd class="mono">Bis zum Widerruf der Einwilligung (Abmeldelink in jedem Newsletter).</dd></div>
+    <div><dt>Merkmale</dt><dd><span class="tag">Profiling</span></dd></div>
+  </dl>
+</section>
+<section class="bearbeitung" id="webanalyse">
+  <h3>Website-Analyse</h3>
+  <p class="b-text">Reichweitenmessung mit selbst gehostetem Matomo, ohne Cookies von Drittanbietern, IP-Adressen gekuerzt.</p>
+  <div class="fluss" role="img" aria-label="Datenfluss dieser Bearbeitung">
+    <span class="knoten knoten-quelle"><span class="knoten-name">Ihre Daten</span></span>
+    <span class="pfeil" aria-hidden="true">→</span><span class="knoten"><span class="knoten-name">Infomaniak Network SA</span><span class="knoten-dienst">Hosting (Server Schweiz)</span><span class="knoten-meta">🇨🇭 Schweiz · Auftragsbearbeiter</span><span class="knoten-tags"><span class="tag">Angemessenes Schutzniveau</span></span></span>
+  </div>
+  <dl class="b-fakten">
+    <div><dt>Zwecke</dt><dd><span class="chip">Analyse</span><span class="chip">Produktentwicklung</span></dd></div>
+    <div><dt>Datenkategorien</dt><dd><span class="chip">Technische Daten</span><span class="chip">Nutzungsdaten</span></dd></div>
+    <div><dt>Aufbewahrung</dt><dd class="mono">1 Jahr 2 Monate · Rohdaten werden nach 14 Monaten geloescht.</dd></div>
+    
+  </dl>
+</section>
+<section class="bearbeitung" id="kundensupport">
+  <h3>Kundensupport</h3>
+  <p class="b-text">Beantwortung von Anfragen per E-Mail und Kontaktformular.</p>
+  <div class="fluss" role="img" aria-label="Datenfluss dieser Bearbeitung">
+    <span class="knoten knoten-quelle"><span class="knoten-name">Ihre Daten</span></span>
+    <span class="pfeil" aria-hidden="true">→</span><span class="knoten"><span class="knoten-name">Infomaniak Network SA</span><span class="knoten-dienst">E-Mail-Hosting (Server Schweiz)</span><span class="knoten-meta">🇨🇭 Schweiz · Auftragsbearbeiter</span><span class="knoten-tags"><span class="tag">Angemessenes Schutzniveau</span></span></span>
+  </div>
+  <dl class="b-fakten">
+    <div><dt>Zwecke</dt><dd><span class="chip">Support</span></dd></div>
+    <div><dt>Datenkategorien</dt><dd><span class="chip">Kontaktdaten</span><span class="chip">Kommunikationsinhalte</span></dd></div>
+    <div><dt>Aufbewahrung</dt><dd class="mono">2 Jahre · Loeschung zwei Jahre nach Abschluss des Anliegens.</dd></div>
+    
+  </dl>
+</section>
+</main>
+<footer>
+  <span>Deklaration: unsigniert (v0.1)</span>
+  <span>Quelle: /.well-known/datenfluss.json</span>
+  <span>Karte erzeugt am 2026-08-13 · Referenz-Renderer v0.1</span>
+</footer>
+</div>
+</body>
+</html>

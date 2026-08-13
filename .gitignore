@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+.DS_Store
+profile/profil-localhost.json

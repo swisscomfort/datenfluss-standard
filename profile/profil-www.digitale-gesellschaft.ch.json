@@ -1,0 +1,17 @@
+{
+  "url": "https://www.digitale-gesellschaft.ch",
+  "gescannt_am": "2026-08-13T12:03:45+00:00",
+  "methodik": "Statischer Abruf der Startseite ohne JavaScript-Ausfuehrung (Untergrenze).",
+  "scanner_version": "0.1",
+  "finale_url": "https://www.digitale-gesellschaft.ch",
+  "status": 200,
+  "drittanbieter": [],
+  "unbekannte_externe_hosts": [
+    "www.societe-numerique.ch"
+  ],
+  "cookies_beim_erstaufruf": 0,
+  "datenfluss_deklaration": {
+    "vorhanden": false
+  },
+  "security_txt": true
+}

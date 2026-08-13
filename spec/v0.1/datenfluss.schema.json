@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datenfluss-standard.example/schema/v0.1/datenfluss.schema.json",
+  "title": "Datenfluss-Deklaration v0.1 (Entwurf)",
+  "description": "Offener Standard fuer maschinenlesbare Datenschutz-Transparenz von Organisationen in der Schweiz. Konvention: Die Datei liegt auf der Domain der Organisation unter /.well-known/datenfluss.json. Felder orientieren sich an den Konzepten des Schweizer DSG (Zwecke, Datenkategorien, Empfaenger, Drittlandtransfers, Aufbewahrung, Auskunftsrecht). Eigene Erweiterungen sind mit dem Praefix 'x_' erlaubt.",
+  "type": "object",
+  "required": ["spec_version", "organisation", "auskunft", "bearbeitungen", "stand"],
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x_": {}
+  },
+  "properties": {
+    "spec_version": {
+      "const": "0.1",
+      "description": "Version der Spezifikation, gegen die diese Deklaration erstellt wurde."
+    },
+    "sprache": {
+      "type": "string",
+      "pattern": "^[a-z]{2}$",
+      "default": "de",
+      "description": "Sprache dieser Deklaration nach ISO 639-1 (de, fr, it, en)."
+    },
+    "organisation": {
+      "type": "object",
+      "required": ["name", "kontakt"],
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "description": "Firmenname gemaess Handelsregister bzw. offizieller Name." },
+        "rechtsform": { "type": "string", "description": "z. B. Einzelfirma, GmbH, AG, Verein." },
+        "uid": {
+          "type": "string",
+          "pattern": "^CHE-\\d{3}\\.\\d{3}\\.\\d{3}$",
+          "description": "Schweizer Unternehmens-Identifikationsnummer (UID), Format CHE-123.456.789."
+        },
+        "website": { "type": "string", "format": "uri" },
+        "adresse": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": { "^x_": {} },
+          "properties": {
+            "strasse": { "type": "string" },
+            "plz": { "type": "string" },
+            "ort": { "type": "string" },
+            "land": { "type": "string", "pattern": "^[A-Z]{2}$", "default": "CH" }
+          }
+        },
+        "kontakt": {
+          "type": "object",
+          "required": ["email"],
+          "additionalProperties": false,
+          "patternProperties": { "^x_": {} },
+          "properties": {
+            "email": { "type": "string", "format": "email", "description": "Allgemeiner Datenschutz-Kontakt der Organisation." },
+            "telefon": { "type": "string" }
+          }
+        },
+        "datenschutzberatung": {
+          "type": "object",
+          "description": "Optional: Datenschutzberater/in nach Art. 10 DSG, falls bezeichnet.",
+          "required": ["name"],
+          "additionalProperties": false,
+          "patternProperties": { "^x_": {} },
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        }
+      }
+    },
+    "auskunft": {
+      "type": "object",
+      "description": "Wie betroffene Personen ihr Auskunftsrecht (Art. 25 DSG) ausueben koennen. Mindestens ein elektronischer Kanal (E-Mail oder Formular) muss angegeben sein.",
+      "anyOf": [
+        { "required": ["email"] },
+        { "required": ["formular_url"] }
+      ],
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "formular_url": { "type": "string", "format": "uri" },
+        "post_adresse": { "type": "string", "description": "Optionale Postadresse fuer schriftliche Begehren." },
+        "frist_tage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 30,
+          "description": "Zugesicherte Antwortfrist in Tagen (gesetzliches Maximum: 30)."
+        },
+        "hinweis": { "type": "string", "description": "z. B. Angaben zur Identifikation der anfragenden Person." }
+      }
+    },
+    "bearbeitungen": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Liste der Bearbeitungstaetigkeiten mit Personendaten.",
+      "items": { "$ref": "#/$defs/bearbeitung" }
+    },
+    "zertifikate": {
+      "type": "array",
+      "description": "Optionale Datenschutz- oder Sicherheitszertifizierungen.",
+      "items": {
+        "type": "object",
+        "required": ["name", "aussteller"],
+        "additionalProperties": false,
+        "patternProperties": { "^x_": {} },
+        "properties": {
+          "name": { "type": "string" },
+          "aussteller": { "type": "string" },
+          "gueltig_bis": { "type": "string", "format": "date" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      }
+    },
+    "dsfa_vorhanden": {
+      "type": "boolean",
+      "description": "Wurde fuer risikoreiche Bearbeitungen eine Datenschutz-Folgenabschaetzung (Art. 22 DSG) durchgefuehrt?"
+    },
+    "verarbeitungsverzeichnis_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optionaler Link auf ein ausfuehrlicheres Verzeichnis der Bearbeitungstaetigkeiten."
+    },
+    "stand": {
+      "type": "string",
+      "format": "date",
+      "description": "Datum, per wann diese Deklaration inhaltlich aktuell ist (JJJJ-MM-TT)."
+    },
+    "naechste_ueberpruefung": {
+      "type": "string",
+      "format": "date",
+      "description": "Geplantes Datum der naechsten Ueberpruefung."
+    },
+    "signatur": {
+      "type": "object",
+      "description": "Kryptografische Signatur der Deklaration. In v0.1 optional, ab v1.0 verpflichtend vorgesehen.",
+      "required": ["verfahren", "wert"],
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "properties": {
+        "verfahren": { "type": "string", "enum": ["pgp", "jws"] },
+        "wert": { "type": "string" },
+        "public_key_url": { "type": "string", "format": "uri" }
+      }
+    }
+  },
+  "$defs": {
+    "bearbeitung": {
+      "type": "object",
+      "required": ["id", "name", "zwecke", "datenkategorien", "aufbewahrung", "empfaenger"],
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+          "description": "Eindeutiger, stabiler Bezeichner (Kleinbuchstaben, Ziffern, Bindestriche)."
+        },
+        "name": { "type": "string", "minLength": 2, "description": "Sprechender Name der Bearbeitung, z. B. 'Webshop-Bestellungen'." },
+        "beschreibung": { "type": "string" },
+        "zwecke": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 3 },
+          "description": "Bearbeitungszwecke. Empfohlenes Vokabular: vertragsabwicklung, buchhaltung, marketing, analyse, support, sicherheit, personalverwaltung, produktentwicklung, rechtspflicht."
+        },
+        "datenkategorien": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "stammdaten",
+              "kontaktdaten",
+              "vertragsdaten",
+              "bestelldaten",
+              "zahlungsdaten",
+              "nutzungsdaten",
+              "technische_daten",
+              "standortdaten",
+              "kommunikationsinhalte",
+              "bewerbungsdaten",
+              "personaldaten",
+              "gesundheitsdaten",
+              "biometrische_daten",
+              "weitere"
+            ]
+          }
+        },
+        "datenkategorien_details": {
+          "type": "string",
+          "description": "Freitext-Praezisierung, insbesondere wenn 'weitere' gewaehlt wurde."
+        },
+        "besonders_schuetzenswert": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enthaelt diese Bearbeitung besonders schuetzenswerte Personendaten nach Art. 5 lit. c DSG?"
+        },
+        "rechtsgrundlagen": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "einwilligung",
+              "vertragserfuellung",
+              "gesetzliche_pflicht",
+              "ueberwiegendes_privates_interesse",
+              "ueberwiegendes_oeffentliches_interesse"
+            ]
+          },
+          "description": "Optional (das DSG verlangt fuer private Bearbeitungen keinen Erlaubnistatbestand); dient der Transparenz und der DSGVO-Anschlussfaehigkeit."
+        },
+        "profiling": { "type": "boolean", "default": false },
+        "profiling_hohes_risiko": {
+          "type": "boolean",
+          "default": false,
+          "description": "Profiling mit hohem Risiko im Sinne von Art. 5 lit. g DSG."
+        },
+        "automatisierte_einzelentscheidung": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatisierte Einzelentscheidung nach Art. 21 DSG."
+        },
+        "aufbewahrung": {
+          "type": "object",
+          "description": "Aufbewahrungsdauer als ISO-8601-Dauer (z. B. P10Y) und/oder als Freitext-Kriterium.",
+          "anyOf": [
+            { "required": ["dauer_iso"] },
+            { "required": ["beschreibung"] }
+          ],
+          "additionalProperties": false,
+          "patternProperties": { "^x_": {} },
+          "properties": {
+            "dauer_iso": {
+              "type": "string",
+              "pattern": "^P(?=\\d)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?$",
+              "description": "z. B. P10Y = 10 Jahre, P26M ist als P2Y2M zu schreiben."
+            },
+            "beschreibung": { "type": "string", "description": "z. B. 'Bis Widerruf der Einwilligung' oder gesetzliche Grundlage." }
+          }
+        },
+        "empfaenger": {
+          "type": "array",
+          "description": "Externe Empfaenger und Auftragsbearbeiter. Leeres Array = rein interne Bearbeitung.",
+          "items": { "$ref": "#/$defs/empfaenger" }
+        }
+      }
+    },
+    "empfaenger": {
+      "type": "object",
+      "required": ["name", "rolle", "land"],
+      "additionalProperties": false,
+      "patternProperties": { "^x_": {} },
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "description": "Name des Unternehmens bzw. der Behoerde." },
+        "dienst": { "type": "string", "description": "Konkreter Dienst/Produktname, z. B. 'Newsletter-Versand'." },
+        "rolle": {
+          "type": "string",
+          "enum": ["auftragsbearbeiter", "eigenstaendig_verantwortlich", "behoerde", "konzerngesellschaft"]
+        },
+        "zweck": { "type": "string" },
+        "land": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "Land der Datenbearbeitung/des Empfaengers nach ISO 3166-1 alpha-2."
+        },
+        "garantien": {
+          "type": "string",
+          "enum": [
+            "nicht_erforderlich_angemessenes_land",
+            "standarddatenschutzklauseln",
+            "angemessenheit_dpf_zertifiziert",
+            "einwilligung",
+            "vertragserfuellung",
+            "andere"
+          ],
+          "description": "Garantie fuer Bekanntgaben ins Ausland (Art. 16 f. DSG). 'angemessenheit_dpf_zertifiziert' nur fuer US-Empfaenger, die unter dem Swiss-U.S. Data Privacy Framework zertifiziert sind."
+        },
+        "garantien_details": { "type": "string" },
+        "website": { "type": "string", "format": "uri" }
+      }
+    }
+  }
+}

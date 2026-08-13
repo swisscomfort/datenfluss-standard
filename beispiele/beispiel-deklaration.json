@@ -1,0 +1,147 @@
+{
+  "spec_version": "0.1",
+  "sprache": "de",
+  "organisation": {
+    "name": "Alpenkafi GmbH",
+    "rechtsform": "GmbH",
+    "uid": "CHE-123.456.789",
+    "website": "https://www.alpenkafi.example",
+    "adresse": {
+      "strasse": "Musterweg 12",
+      "plz": "3011",
+      "ort": "Bern",
+      "land": "CH"
+    },
+    "kontakt": {
+      "email": "datenschutz@alpenkafi.example"
+    }
+  },
+  "auskunft": {
+    "email": "datenschutz@alpenkafi.example",
+    "formular_url": "https://www.alpenkafi.example/datenschutz/auskunft",
+    "frist_tage": 30,
+    "hinweis": "Wir verlangen eine Ausweiskopie nur, wenn begruendete Zweifel an der Identitaet bestehen."
+  },
+  "bearbeitungen": [
+    {
+      "id": "shop-bestellungen",
+      "name": "Webshop-Bestellungen",
+      "beschreibung": "Abwicklung von Bestellungen im Online-Shop inkl. Zahlung, Versand und Buchhaltung.",
+      "zwecke": ["vertragsabwicklung", "buchhaltung", "rechtspflicht"],
+      "datenkategorien": ["kontaktdaten", "bestelldaten", "zahlungsdaten"],
+      "besonders_schuetzenswert": false,
+      "rechtsgrundlagen": ["vertragserfuellung", "gesetzliche_pflicht"],
+      "profiling": false,
+      "aufbewahrung": {
+        "dauer_iso": "P10Y",
+        "beschreibung": "Gesetzliche Aufbewahrungspflicht fuer Geschaeftsbuecher (Art. 958f OR)."
+      },
+      "empfaenger": [
+        {
+          "name": "Stripe Payments Europe Ltd.",
+          "dienst": "Zahlungsabwicklung Kreditkarte/TWINT",
+          "rolle": "auftragsbearbeiter",
+          "zweck": "Zahlungsabwicklung",
+          "land": "IE",
+          "garantien": "nicht_erforderlich_angemessenes_land",
+          "website": "https://stripe.com"
+        },
+        {
+          "name": "Die Schweizerische Post AG",
+          "dienst": "Paketversand",
+          "rolle": "eigenstaendig_verantwortlich",
+          "zweck": "Zustellung der Bestellungen",
+          "land": "CH",
+          "garantien": "nicht_erforderlich_angemessenes_land",
+          "website": "https://www.post.ch"
+        },
+        {
+          "name": "Treuhand Muster AG",
+          "dienst": "Buchhaltung",
+          "rolle": "auftragsbearbeiter",
+          "zweck": "Finanz- und Lohnbuchhaltung",
+          "land": "CH",
+          "garantien": "nicht_erforderlich_angemessenes_land"
+        }
+      ]
+    },
+    {
+      "id": "newsletter",
+      "name": "Newsletter",
+      "beschreibung": "Versand des monatlichen Kaffee-Newsletters an angemeldete Personen inkl. Auswertung von Oeffnungsraten.",
+      "zwecke": ["marketing"],
+      "datenkategorien": ["kontaktdaten", "nutzungsdaten"],
+      "besonders_schuetzenswert": false,
+      "rechtsgrundlagen": ["einwilligung"],
+      "profiling": true,
+      "profiling_hohes_risiko": false,
+      "aufbewahrung": {
+        "beschreibung": "Bis zum Widerruf der Einwilligung (Abmeldelink in jedem Newsletter)."
+      },
+      "empfaenger": [
+        {
+          "name": "Intuit Inc. (Mailchimp)",
+          "dienst": "Newsletter-Versand",
+          "rolle": "auftragsbearbeiter",
+          "zweck": "Versand und Auswertung des Newsletters",
+          "land": "US",
+          "garantien": "angemessenheit_dpf_zertifiziert",
+          "garantien_details": "Zertifiziert unter dem Swiss-U.S. Data Privacy Framework (Stand der Deklaration).",
+          "website": "https://mailchimp.com"
+        }
+      ]
+    },
+    {
+      "id": "webanalyse",
+      "name": "Website-Analyse",
+      "beschreibung": "Reichweitenmessung mit selbst gehostetem Matomo, ohne Cookies von Drittanbietern, IP-Adressen gekuerzt.",
+      "zwecke": ["analyse", "produktentwicklung"],
+      "datenkategorien": ["technische_daten", "nutzungsdaten"],
+      "besonders_schuetzenswert": false,
+      "rechtsgrundlagen": ["ueberwiegendes_privates_interesse"],
+      "profiling": false,
+      "aufbewahrung": {
+        "dauer_iso": "P1Y2M",
+        "beschreibung": "Rohdaten werden nach 14 Monaten geloescht."
+      },
+      "empfaenger": [
+        {
+          "name": "Infomaniak Network SA",
+          "dienst": "Hosting (Server Schweiz)",
+          "rolle": "auftragsbearbeiter",
+          "zweck": "Betrieb von Website und Analyse-Server",
+          "land": "CH",
+          "garantien": "nicht_erforderlich_angemessenes_land",
+          "website": "https://www.infomaniak.com"
+        }
+      ]
+    },
+    {
+      "id": "kundensupport",
+      "name": "Kundensupport",
+      "beschreibung": "Beantwortung von Anfragen per E-Mail und Kontaktformular.",
+      "zwecke": ["support"],
+      "datenkategorien": ["kontaktdaten", "kommunikationsinhalte"],
+      "besonders_schuetzenswert": false,
+      "profiling": false,
+      "aufbewahrung": {
+        "dauer_iso": "P2Y",
+        "beschreibung": "Loeschung zwei Jahre nach Abschluss des Anliegens."
+      },
+      "empfaenger": [
+        {
+          "name": "Infomaniak Network SA",
+          "dienst": "E-Mail-Hosting (Server Schweiz)",
+          "rolle": "auftragsbearbeiter",
+          "zweck": "Betrieb der E-Mail-Infrastruktur",
+          "land": "CH",
+          "garantien": "nicht_erforderlich_angemessenes_land"
+        }
+      ]
+    }
+  ],
+  "dsfa_vorhanden": false,
+  "stand": "2026-08-13",
+  "naechste_ueberpruefung": "2027-08-13",
+  "x_hinweis": "Fiktives Beispiel der Datenfluss-Spezifikation v0.1. Signatur folgt mit dem v1.0-Tooling."
+}
