@@ -2,12 +2,18 @@
 """Validator fuer Datenfluss-Deklarationen (Spezifikation v0.1, Entwurf).
 
 Prueft eine Deklaration in zwei Stufen:
-  1. Formal gegen das JSON Schema (datenfluss.schema.json)
-  2. Semantisch mit Schweiz-spezifischen Regeln (Drittlandtransfers,
-     Datumslogik, eindeutige IDs, DSFA-Hinweise)
+  1. Formal gegen das JSON Schema (datenfluss.schema.json) – rechtsraumunabhaengig
+  2. Semantisch: universelle Regeln (Datumslogik, eindeutige IDs, Signatur)
+     plus ein waehlbares Pruefprofil fuer den Rechtsraum (--profil, Standard: ch)
+
+Das Format selbst ist rechtsraumneutral; juristische Logik (etwa die Schweizer
+Drittland-Regeln) lebt ausschliesslich in Pruefprofilen. Ein weiterer Rechtsraum
+(z. B. 'eu' fuer die DSGVO) wird als zusaetzliches Profil in PROFILE ergaenzt,
+ohne dass Schema oder Deklarationen sich aendern.
 
 Verwendung:
     python3 validator.py beispiel-deklaration.json
+    python3 validator.py --profil ch deklaration.json
     python3 validator.py --schema pfad/zum/schema.json deklaration.json
 
 Exit-Codes: 0 = gueltig (Warnungen moeglich), 1 = Fehler gefunden, 2 = Aufruf-/Dateifehler
@@ -29,8 +35,9 @@ except ImportError:  # pragma: no cover
     sys.exit(2)
 
 # ---------------------------------------------------------------------------
-# Vereinfachte Liste der Staaten mit angemessenem Datenschutzniveau aus
-# Schweizer Sicht (massgeblich ist Anhang 1 der Datenschutzverordnung DSV).
+# Pruefprofil 'ch' – Vereinfachte Liste der Staaten mit angemessenem
+# Datenschutzniveau aus Schweizer Sicht (massgeblich ist Anhang 1 der
+# Datenschutzverordnung DSV).
 # USA sind bewusst NICHT enthalten: Angemessenheit gilt dort nur fuer
 # Empfaenger, die unter dem Swiss-U.S. Data Privacy Framework (DPF)
 # zertifiziert sind -> eigener Garantien-Wert 'angemessenheit_dpf_zertifiziert'.
@@ -90,7 +97,8 @@ def parse_datum(wert: str | None) -> date | None:
         return None
 
 
-def pruefe_semantik(dekl: dict, befund: Befund) -> None:
+def pruefe_semantik_universell(dekl: dict, befund: Befund) -> None:
+    """Rechtsraumunabhaengige Regeln: Datumslogik, eindeutige IDs, Signatur."""
     heute = date.today()
 
     # --- Datumslogik -------------------------------------------------------
@@ -114,6 +122,15 @@ def pruefe_semantik(dekl: dict, befund: Befund) -> None:
             if bid in ids:
                 befund.f(f"bearbeitungen/{i}/id", f"ID '{bid}' bereits in Bearbeitung {ids[bid]} verwendet – IDs muessen eindeutig sein.")
             ids[bid] = i
+
+    # --- Signatur ----------------------------------------------------------
+    if "signatur" not in dekl:
+        befund.w("signatur", "Deklaration ist unsigniert – zulaessig in v0.1, ab v1.0 verpflichtend.")
+
+
+def pruefe_profil_ch(dekl: dict, befund: Befund) -> None:
+    """Pruefprofil Schweiz: Drittlandtransfers (Art. 16 f. DSG, DSV Anhang 1)
+    und DSFA-Hinweise (Art. 22 DSG)."""
 
     # --- Drittlandtransfers und Garantien ---------------------------------
     for i, b in enumerate(dekl.get("bearbeitungen", [])):
@@ -155,9 +172,12 @@ def pruefe_semantik(dekl: dict, befund: Befund) -> None:
         if b.get("automatisierte_einzelentscheidung") and not dsfa:
             befund.w(f"bearbeitungen/{i}", "Automatisierte Einzelentscheidung deklariert – DSFA-Pflicht pruefen.")
 
-    # --- Signatur ----------------------------------------------------------
-    if "signatur" not in dekl:
-        befund.w("signatur", "Deklaration ist unsigniert – zulaessig in v0.1, ab v1.0 verpflichtend.")
+
+# Registrierte Pruefprofile: Kuerzel -> (Beschreibung, Pruef-Funktion).
+# Ein neuer Rechtsraum braucht nur einen weiteren Eintrag hier.
+PROFILE = {
+    "ch": ("Schweiz – DSG/DSV: Drittlandtransfers, DPF-Sonderfall, DSFA-Hinweise", pruefe_profil_ch),
+}
 
 
 def main() -> int:
@@ -165,6 +185,9 @@ def main() -> int:
     parser.add_argument("deklaration", type=Path, help="Pfad zur Deklarations-Datei (JSON)")
     parser.add_argument("--schema", type=Path, default=Path(__file__).resolve().parents[1] / "spec" / "v0.1" / "datenfluss.schema.json",
                         help="Pfad zum JSON Schema (Standard: spec/v0.1/datenfluss.schema.json)")
+    parser.add_argument("--profil", choices=sorted(PROFILE), default="ch",
+                        help="Pruefprofil fuer den Rechtsraum (Standard: ch). " +
+                             " | ".join(f"{k}: {v[0]}" for k, v in sorted(PROFILE.items())))
     args = parser.parse_args()
 
     schema = lade_json(args.schema)
@@ -173,10 +196,11 @@ def main() -> int:
     befund = Befund()
     pruefe_schema(deklaration, schema, befund)
     if not befund.fehler:  # Semantik nur pruefen, wenn die Struktur stimmt
-        pruefe_semantik(deklaration, befund)
+        pruefe_semantik_universell(deklaration, befund)
+        PROFILE[args.profil][1](deklaration, befund)
 
     name = deklaration.get("organisation", {}).get("name", args.deklaration.name)
-    print(f"Datenfluss-Validator v0.1 – Pruefung von: {name}")
+    print(f"Datenfluss-Validator v0.1 – Pruefung von: {name} (Pruefprofil: {args.profil})")
     print("-" * 60)
     for w in befund.warnungen:
         print(f"  WARNUNG  {w}")

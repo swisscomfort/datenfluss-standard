@@ -1,6 +1,6 @@
 # Datenfluss-Standard v0.1 (Entwurf)
 
-**Ein offener Standard für maschinenlesbare Datenschutz-Transparenz von Schweizer Organisationen.**
+**Ein offener Standard für maschinenlesbare Datenschutz-Transparenz. Das Format ist rechtsraumneutral – Referenzimplementierung und erstes Prüfprofil: Schweiz.**
 
 Jede Organisation deklariert in einer signierbaren JSON-Datei, welche Personendaten sie zu welchen Zwecken bearbeitet, an wen sie fliessen und wie lange sie aufbewahrt werden. Die Datei liegt auf der eigenen Domain – nicht auf einer Plattform:
 
@@ -16,7 +16,7 @@ Plattformen, Browser-Erweiterungen, Treuhänder-Software und Register können di
 |---|---|
 | `spec/v0.1/datenfluss.schema.json` | Die formale Spezifikation als JSON Schema (Draft 2020-12), Feldbeschreibungen auf Deutsch |
 | `beispiele/beispiel-deklaration.json` | Vollständige Beispiel-Deklaration der fiktiven **Alpenkafi GmbH** (Webshop, Newsletter, Analyse, Support) |
-| `werkzeuge/validator.py` | Prüft Deklarationen formal (Schema) und semantisch (Schweizer Regeln) |
+| `werkzeuge/validator.py` | Prüft Deklarationen formal (Schema) und semantisch (universelle Regeln + Prüfprofil je Rechtsraum, heute: `ch`) |
 | `werkzeuge/renderer.py` | Referenz-Renderer: erzeugt aus einer Deklaration die lesbare HTML-«Datenfluss-Karte» |
 | `beispiele/datenfluss-karte.html` | Gerenderte Beispiel-Karte der Alpenkafi GmbH (im Browser öffnen) |
 | `werkzeuge/scanner.py` | Scanner-Prototyp: vermisst statisch eingebundene Drittanbieter einer Website und vergleicht mit deren Deklaration (gemessen ↔ deklariert) |
@@ -42,11 +42,12 @@ Der Scanner respektiert robots.txt (RFC 9309), identifiziert sich ehrlich als `D
 Der Validator prüft zwei Stufen:
 
 1. **Formal** – Struktur, Pflichtfelder, Formate (UID, Datum, Ländercodes, Enums)
-2. **Semantisch** – Schweizer Logik:
+2. **Semantisch** – universelle Regeln (Stand-Datum nicht in der Zukunft, Warnung ab 18 Monaten Alter, eindeutige IDs, Signatur-Hinweis) plus ein **Prüfprofil je Rechtsraum** (`--profil`, Standard `ch`):
    - Drittlandtransfers: Empfänger ausserhalb der angemessenen Staaten brauchen eine Garantie (Art. 16 f. DSG)
    - USA-Sonderfall: Angemessenheit nur für Empfänger mit Swiss-U.S.-DPF-Zertifizierung, mit Erinnerung zur periodischen Prüfung
-   - Stand-Datum nicht in der Zukunft, Warnung ab 18 Monaten Alter
-   - Eindeutige IDs, DSFA-Hinweise bei Hochrisiko-Profiling, Signatur-Hinweis
+   - DSFA-Hinweise bei Hochrisiko-Profiling
+
+Die juristische Logik lebt ausschliesslich in Prüfprofilen – das Format selbst bleibt rechtsraumneutral. Ein weiterer Rechtsraum (z. B. `eu` für die DSGVO) wird als zusätzliches Profil ergänzt, ohne dass sich Schema oder bestehende Deklarationen ändern.
 
 Exit-Code `0` = gültig, `1` = Fehler – damit direkt in CI/CD einsetzbar (z. B. GitHub Action, die bei jeder Website-Änderung die eigene Deklaration prüft).
 
@@ -55,13 +56,14 @@ Exit-Code `0` = gültig, `1` = Fehler – damit direkt in CI/CD einsetzbar (z. B
 1. **Dezentral:** Die Deklaration liegt bei der Organisation. Register sind austauschbar.
 2. **Ehrlichkeit durch Öffentlichkeit:** Eine falsche öffentliche Deklaration ist lauterkeitsrechtlich angreifbar – Publizität diszipliniert.
 3. **Erweiterbar, aber streng:** Unbekannte Felder sind verboten, ausser mit Präfix `x_` (kontrollierte Innovation).
-4. **DSG-nah, DSGVO-anschlussfähig:** Begriffe folgen dem Schweizer DSG; optionale Felder (Rechtsgrundlagen) schlagen die Brücke zur DSGVO.
+4. **Rechtsraumneutral im Format, DSG-nah im ersten Profil:** Begriffe folgen dem Schweizer DSG; optionale Felder (Rechtsgrundlagen) schlagen die Brücke zur DSGVO. Juristische Prüflogik ist als austauschbares Prüfprofil vom Format getrennt.
 5. **Drei Vertrauensstufen** (ausserhalb dieser Spezifikation): gemessen → deklariert → verifiziert.
 
 ## Roadmap Richtung v1.0
 
 - Signatur verpflichtend (PGP oder JWS), inkl. Schlüssel-Konvention
 - Offizielle Übersetzungen FR/IT (mehrsprachige Deklarationen)
+- EU-Prüfprofil (`--profil eu`, DSGVO-Logik) als erstes Nicht-Schweizer Profil
 - Registrierung des `/.well-known/`-Pfads, Andockpunkt eCH prüfen
 - Badge-Widget: einbettbare Kurzversion der Karte für Websites («Datenfluss deklariert · Stand …»)
 - Scanner mit Headless-Browser: erfasst auch dynamisch nachgeladene Dienste (heute nur Untergrenze)
