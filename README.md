@@ -2,6 +2,8 @@
 
 **Ein offener Standard für maschinenlesbare Datenschutz-Transparenz. Das Format ist rechtsraumneutral – Referenzimplementierung und erstes Prüfprofil: Schweiz.**
 
+*English guide: [README.en.md](README.en.md) – the specification's normative language is German.*
+
 Jede Organisation deklariert in einer signierbaren JSON-Datei, welche Personendaten sie zu welchen Zwecken bearbeitet, an wen sie fliessen und wie lange sie aufbewahrt werden. Die Datei liegt auf der eigenen Domain – nicht auf einer Plattform:
 
 ```
