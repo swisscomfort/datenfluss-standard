@@ -75,7 +75,7 @@ Code: **MIT** (`LICENSE`) · Spezifikation und Texte: **CC BY 4.0** (`spec/LICEN
 
 ## Mitmachen
 
-Issues und Pull Requests sind willkommen, sobald das Repo öffentlich ist. Diskussionsbedarf besteht v. a. beim Zweck-Vokabular, den Datenkategorien und der Signatur-Konvention.
+Issues und Pull Requests sind willkommen. Diskussionsbedarf besteht v. a. beim Zweck-Vokabular, den Datenkategorien und der Signatur-Konvention.
 
 ---
 

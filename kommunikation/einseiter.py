@@ -217,7 +217,7 @@ def erstelle(ziel: Path):
     # Fusszeile
     c.setStrokeColor(LINIE)
     c.line(RAND, 64, B - RAND, 64)
-    text(c, RAND, 48, "[Vorname Name] · [E-Mail] · [Website / GitHub-Repo]", "PlexMono", 8.5, GRAU)
+    text(c, RAND, 48, "Jean Jacques Emil Martin · kontakt@datenfluss-standard.ch · github.com/swisscomfort/datenfluss-standard", "PlexMono", 8.5, GRAU)
     text(c, B - RAND - pdfmetrics.stringWidth("Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5),
          48, "Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5, GRAU)
 
