@@ -175,7 +175,7 @@ def ordne_zu(host_pfad: str) -> tuple[str, str, str] | None:
     return None
 
 
-def scanne(url: str) -> dict:
+def scanne(url: str, hartnaeckig: bool = False) -> dict:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
@@ -195,11 +195,20 @@ def scanne(url: str) -> dict:
         try:
             finale_url, status, headers, html_text = hole(url, ua)
         except HTTPError as exc:
-            if exc.code in (403, 406):  # Bot-Schutz: einmal transparent mit Browser-Kennung wiederholen
+            # Bot-Schutz. Standardmaessig respektieren wir die Abweisung: Wer
+            # unsere ehrliche Kennung ablehnt, will nicht gemessen werden, und
+            # ein Wiederholungsversuch mit Browser-Kennung waere eine
+            # Verkleidung. Fuer ein Projekt, dessen Waehrung Glaubwuerdigkeit
+            # ist, waere das der falsche Preis fuer ein paar Datenpunkte.
+            if exc.code in (403, 406) and hartnaeckig:
                 ua = BROWSER_UA
                 profil["abruf_hinweis"] = (f"Server blockierte die Scanner-Kennung (HTTP {exc.code}); "
-                                           "Abruf mit Browser-Kennung wiederholt.")
+                                           "auf ausdrueckliche Anweisung mit Browser-Kennung wiederholt.")
                 finale_url, status, headers, html_text = hole(url, ua)
+            elif exc.code in (403, 406):
+                profil["abruf_hinweis"] = (f"Server hat die Scanner-Kennung abgewiesen (HTTP {exc.code}). "
+                                           "Die Abweisung wird respektiert; es wurde nicht erneut versucht.")
+                raise
             else:
                 raise
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
@@ -312,11 +321,14 @@ def main() -> int:
     parser.add_argument("urls", nargs="+", help="Eine oder mehrere Website-Adressen")
     parser.add_argument("-o", "--output", type=Path, default=Path("profile"),
                         help="Ordner fuer die JSON-Profile (Standard: ./profile)")
+    parser.add_argument("--hartnaeckig", action="store_true",
+                        help="Bei Abweisung (HTTP 403/406) erneut mit Browser-Kennung versuchen. "
+                             "Standardmaessig aus: Eine Abweisung wird respektiert.")
     args = parser.parse_args()
 
     args.output.mkdir(parents=True, exist_ok=True)
     for url in args.urls:
-        profil = scanne(url)
+        profil = scanne(url, hartnaeckig=args.hartnaeckig)
         host = urlparse(profil.get("finale_url", profil["url"])).hostname or "unbekannt"
         ziel = args.output / f"profil-{host}.json"
         ziel.write_text(json.dumps(profil, ensure_ascii=False, indent=2), encoding="utf-8")

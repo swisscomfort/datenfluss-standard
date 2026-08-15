@@ -1,0 +1,60 @@
+{
+  "gueltig-minimal.json": {
+    "gueltig": true,
+    "fehler_enthalten": []
+  },
+  "gueltig-us-mit-dpf.json": {
+    "gueltig": true,
+    "warnung_enthalten": [
+      "empfaenger/0"
+    ]
+  },
+  "fehler-us-ohne-garantie.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
+  },
+  "fehler-us-als-angemessen-deklariert.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
+  },
+  "fehler-drittland-ohne-garantie.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
+  },
+  "fehler-dpf-bei-nicht-us.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
+  },
+  "fehler-doppelte-kennung.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "bearbeitungen/1/id"
+    ]
+  },
+  "fehler-stand-in-zukunft.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "stand"
+    ]
+  },
+  "fehler-pflichtfeld-fehlt.json": {
+    "gueltig": false,
+    "fehler_enthalten": [
+      "(wurzel)"
+    ]
+  },
+  "warnung-profiling-ohne-dsfa.json": {
+    "gueltig": true,
+    "warnung_enthalten": [
+      "bearbeitungen/0"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "spec_version": "0.1",
+  "sprache": "de",
+  "organisation": {
+    "name": "Testfirma AG",
+    "website": "https://www.testfirma.example",
+    "kontakt": {
+      "email": "datenschutz@testfirma.example"
+    }
+  },
+  "auskunft": {
+    "email": "datenschutz@testfirma.example",
+    "frist_tage": 30
+  },
+  "bearbeitungen": [
+    {
+      "id": "b1",
+      "name": "Testbearbeitung",
+      "zwecke": [
+        "Test"
+      ],
+      "datenkategorien": [
+        "kontaktdaten"
+      ],
+      "aufbewahrung": {
+        "dauer_iso": "P1Y",
+        "beschreibung": "Test"
+      },
+      "empfaenger": [
+        {
+          "name": "US Corp",
+          "rolle": "auftragsbearbeiter",
+          "land": "US"
+        }
+      ]
+    }
+  ],
+  "stand": "2026-01-15"
+}

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://datenfluss-standard.example/schema/v0.1/datenfluss.schema.json",
+  "$id": "https://datenfluss-standard.ch/schema/v0.1/datenfluss.schema.json",
   "title": "Datenfluss-Deklaration v0.1 (Entwurf)",
   "description": "Offener Standard fuer maschinenlesbare Datenschutz-Transparenz von Organisationen. Das Format ist rechtsraumneutral; die Felder orientieren sich an den Konzepten des Schweizer DSG (Zwecke, Datenkategorien, Empfaenger, Drittlandtransfers, Aufbewahrung, Auskunftsrecht), die sich mit der DSGVO weitgehend decken. Rechtsraumspezifische Pruefung uebernehmen Pruefprofile des Validators. Konvention: Die Datei liegt auf der Domain der Organisation unter /.well-known/datenfluss.json. Eigene Erweiterungen sind mit dem Praefix 'x_' erlaubt.",
   "type": "object",

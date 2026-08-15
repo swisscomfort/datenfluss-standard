@@ -144,8 +144,8 @@ def erstelle(ziel: Path):
                            "JSON-Datei auf der eigenen Domain – Zwecke, Empfänger, Länder, Fristen."),
         ("2  Prüfen", "Validator und Website-Scanner gleichen Deklaration und Realität ab: "
                       "gemessen ↔ deklariert, Drittland-Regeln nach DSG inklusive."),
-        ("3  Zeigen", "Daraus entstehen automatisch die öffentliche Datenfluss-Karte, ein "
-                      "Website-Badge und Antworten auf Kunden-Fragebögen."),
+        ("3  Zeigen", "Daraus entsteht automatisch die öffentliche Datenfluss-Karte – eine "
+                      "lesbare Seite, auf die man Kundschaft und Behörden verweisen kann."),
     ]
     for titel, body in schritte:
         text(c, RAND, yl, titel, "PlexSans-SB", 10.5, TINTE)
