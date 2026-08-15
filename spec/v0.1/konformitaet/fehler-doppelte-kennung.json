@@ -1,0 +1,62 @@
+{
+  "spec_version": "0.1",
+  "sprache": "de",
+  "organisation": {
+    "name": "Testfirma AG",
+    "website": "https://www.testfirma.example",
+    "kontakt": {
+      "email": "datenschutz@testfirma.example"
+    }
+  },
+  "auskunft": {
+    "email": "datenschutz@testfirma.example",
+    "frist_tage": 30
+  },
+  "bearbeitungen": [
+    {
+      "id": "gleich",
+      "name": "Testbearbeitung",
+      "zwecke": [
+        "Test"
+      ],
+      "datenkategorien": [
+        "kontaktdaten"
+      ],
+      "aufbewahrung": {
+        "dauer_iso": "P1Y",
+        "beschreibung": "Test"
+      },
+      "empfaenger": [
+        {
+          "name": "Alpha Hosting AG",
+          "rolle": "auftragsbearbeiter",
+          "land": "CH",
+          "garantien": "nicht_erforderlich_angemessenes_land"
+        }
+      ]
+    },
+    {
+      "id": "gleich",
+      "name": "Testbearbeitung",
+      "zwecke": [
+        "Test"
+      ],
+      "datenkategorien": [
+        "kontaktdaten"
+      ],
+      "aufbewahrung": {
+        "dauer_iso": "P1Y",
+        "beschreibung": "Test"
+      },
+      "empfaenger": [
+        {
+          "name": "Beta Cloud GmbH",
+          "rolle": "auftragsbearbeiter",
+          "land": "CH",
+          "garantien": "nicht_erforderlich_angemessenes_land"
+        }
+      ]
+    }
+  ],
+  "stand": "2026-01-15"
+}

@@ -9,4 +9,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install jsonschema
-      - run: python3 werkzeuge/validator.py beispiele/beispiel-deklaration.json
+      - name: Beispiel-Deklaration validieren
+        run: python3 werkzeuge/validator.py beispiele/beispiel-deklaration.json
+      - name: Konformitaets-Testsuite
+        run: python3 werkzeuge/konformitaet.py

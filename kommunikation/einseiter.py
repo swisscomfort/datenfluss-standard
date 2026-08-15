@@ -144,8 +144,8 @@ def erstelle(ziel: Path):
                            "JSON-Datei auf der eigenen Domain – Zwecke, Empfänger, Länder, Fristen."),
         ("2  Prüfen", "Validator und Website-Scanner gleichen Deklaration und Realität ab: "
                       "gemessen ↔ deklariert, Drittland-Regeln nach DSG inklusive."),
-        ("3  Zeigen", "Daraus entstehen automatisch die öffentliche Datenfluss-Karte, ein "
-                      "Website-Badge und Antworten auf Kunden-Fragebögen."),
+        ("3  Zeigen", "Daraus entsteht automatisch die öffentliche Datenfluss-Karte – eine "
+                      "lesbare Seite, auf die man Kundschaft und Behörden verweisen kann."),
     ]
     for titel, body in schritte:
         text(c, RAND, yl, titel, "PlexSans-SB", 10.5, TINTE)
@@ -217,7 +217,7 @@ def erstelle(ziel: Path):
     # Fusszeile
     c.setStrokeColor(LINIE)
     c.line(RAND, 64, B - RAND, 64)
-    text(c, RAND, 48, "[Vorname Name] · [E-Mail] · [Website / GitHub-Repo]", "PlexMono", 8.5, GRAU)
+    text(c, RAND, 48, "Jean Jacques Emil Martin · kontakt@datenfluss-standard.ch · github.com/swisscomfort/datenfluss-standard", "PlexMono", 8.5, GRAU)
     text(c, B - RAND - pdfmetrics.stringWidth("Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5),
          48, "Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5, GRAU)
 
