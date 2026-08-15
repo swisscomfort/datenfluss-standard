@@ -93,8 +93,10 @@ TRACKER_DB: dict[str, tuple[str, str, str]] = {
 
 # Hinweise auf selbst gehostete Analyse (Pfadmuster im HTML)
 SELBSTGEHOSTET = {
+    # Piwik ist der fruehere Name von Matomo – dasselbe Produkt. Zwei Namen
+    # dafuer wuerden denselben Dienst in jeder Auswertung doppelt zaehlen.
     "matomo.js": ("Matomo (selbst gehostet)", "analyse"),
-    "piwik.js": ("Matomo/Piwik (selbst gehostet)", "analyse"),
+    "piwik.js": ("Matomo (selbst gehostet)", "analyse"),
 }
 
 
