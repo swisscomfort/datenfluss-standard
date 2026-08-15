@@ -57,20 +57,37 @@ def main() -> int:
 
     ergebnisse, gescheitert = [], 0
     for datei, erwartet in sorted(erwartungen.items()):
+        if datei.startswith("_"):
+            continue  # Kommentarschluessel wie _hinweis
         deklaration = lade_json(FAELLE / datei)
         befund = pruefe(deklaration, schema)
-        gueltig = not befund.fehler
+        gueltig = befund.standard_konform
         probleme = []
 
+        # 'gueltig' meint Standardkonformitaet. Profil-Befunde (Rechtsraum)
+        # laufen getrennt – sie duerfen eine Datei nie standardwidrig machen.
         if gueltig != erwartet["gueltig"]:
-            probleme.append(f"erwartet gueltig={erwartet['gueltig']}, war {gueltig}"
+            probleme.append(f"erwartet standardkonform={erwartet['gueltig']}, war {gueltig}"
                             + (f" ({befund.fehler[0]})" if befund.fehler else ""))
         for teil in erwartet.get("fehler_enthalten", []):
             if not enthalten(befund.fehler, teil):
-                probleme.append(f"Fehler zu '{teil}' fehlt")
+                probleme.append(f"Standard-Fehler zu '{teil}' fehlt")
         for teil in erwartet.get("warnung_enthalten", []):
             if not enthalten(befund.warnungen, teil):
-                probleme.append(f"Warnung zu '{teil}' fehlt")
+                probleme.append(f"Standard-Warnung zu '{teil}' fehlt")
+        for teil in erwartet.get("profil_fehler_enthalten", []):
+            if not enthalten(befund.profil_fehler, teil):
+                probleme.append(f"Profil-Problem zu '{teil}' fehlt")
+        for teil in erwartet.get("profil_warnung_enthalten", []):
+            if not enthalten(befund.profil_warnungen, teil):
+                probleme.append(f"Profil-Hinweis zu '{teil}' fehlt")
+        # Gegenrichtung: Ein Fall ohne erwartete Profil-Befunde darf keine haben,
+        # sonst schleichen sich Rechtsregeln in Faelle, die Standardregeln testen.
+        if erwartet["gueltig"] and not erwartet.get("profil_fehler_enthalten") \
+                and not erwartet.get("profil_warnung_enthalten") \
+                and (befund.profil_fehler or befund.profil_warnungen):
+            probleme.append("unerwartete Profil-Befunde: "
+                            + "; ".join(befund.profil_fehler + befund.profil_warnungen))
 
         if probleme:
             gescheitert += 1
