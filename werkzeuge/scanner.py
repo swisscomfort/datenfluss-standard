@@ -17,7 +17,7 @@ Bewusste Grenzen (ehrlich dokumentiert, Teil der Methodik):
 
 Verwendung:
     python3 scanner.py https://www.beispielfirma.ch
-    python3 scanner.py -o profile/ https://a.ch https://b.ch
+    python3 scanner.py -o profile/ https://www.eine-firma.example https://www.andere.example
 
 Nur Python-Standardbibliothek.
 """
