@@ -63,6 +63,16 @@ Der Standard wird mehrfach umgesetzt – hier in Python, im Browser eines Deklar
 
 Deshalb sind die Dateien in `spec/v0.1/konformitaet/` **verbindliche Referenz**, nicht bloss Beispiele. Die Namensgebung trägt die Trennung der zwei Urteile: `fehler-*` verletzt den Standard, `profilfehler-*`/`profilwarnung-*` ist standardkonform mit Rechtsbefund im Profil `ch`. `erwartungen.json` hält je Fall fest, was herauskommen muss. Wer den Standard umsetzt, sollte alle Fälle bestehen; wer ihn erweitert, ergänzt zuerst einen Testfall.
 
+## Vorläufer und verwandte Standards
+
+Die Idee maschinenlesbarer Datenschutz-Angaben ist nicht neu – und wer sie umsetzt, sollte wissen, woran der wichtigste Vorläufer gescheitert ist:
+
+- **W3C P3P** (2002, heute offiziell obsolet) liess Websites ihre Datenpraktiken maschinenlesbar deklarieren. Es scheiterte an zwei Dingen: Es gab kaum Software, die die Angaben konsumierte – und sobald der Internet Explorer die Angaben für Cookie-Entscheide nutzte, kopierten Betreiber generische Policies, statt ihre Praxis zu beschreiben. **Eine standardisierte Behauptung allein schafft keine Transparenz.** Genau deshalb stellt dieser Standard der Selbstdeklaration eine unabhängige Messung gegenüber (gemessen ↔ deklariert) und hält beide strikt getrennt: Die Deklaration ist die Aussage der Organisation, die Messung ist die Beobachtung von aussen, und der Vergleich der beiden ist öffentlich. Eine kopierte Gefälligkeits-Deklaration fällt am Messwert auf.
+- **W3C DPV** (Data Privacy Vocabulary) definiert ein umfassendes Vokabular für Zwecke, Empfänger und Rechtsgrundlagen. Dieser Standard erfindet bewusst keine eigene Ontologie dieser Tiefe; ein Mapping der Feldsemantik auf DPV steht auf der Roadmap, damit Deklarationen international anschlussfähig bleiben.
+- **Apple Privacy Manifests** und **Google Play Data Safety** verlangen strukturierte, maschinenlesbare Datenschutz-Angaben von Apps und SDKs – dieselbe Bewegung von Fliesstext zu prüfbarer Metainformation, aber innerhalb geschlossener Plattformen. Dieser Standard überträgt das Muster auf das offene Web, wo keine Plattform Deklarationen erzwingen kann – dafür kann jede Person sie unabhängig nachmessen.
+
+Kurz: Neu ist nicht die maschinenlesbare Erklärung. Neu ist die **öffentliche, versionierte Gegenprobe** – Selbsterklärung und unabhängige Messung, getrennt erhoben und maschinell vergleichbar.
+
 ## Design-Prinzipien
 
 1. **Dezentral:** Die Deklaration liegt bei der Organisation. Register sind austauschbar.
@@ -76,7 +86,8 @@ Deshalb sind die Dateien in `spec/v0.1/konformitaet/` **verbindliche Referenz**,
 - Signatur verpflichtend (PGP oder JWS), inkl. Schlüssel-Konvention
 - Offizielle Übersetzungen FR/IT (mehrsprachige Deklarationen)
 - EU-Prüfprofil (`--profil eu`, DSGVO-Logik) als erstes Nicht-Schweizer Profil
-- Registrierung des `/.well-known/`-Pfads, Andockpunkt eCH prüfen
+- Registrierung des `/.well-known/`-Pfads (RFC 8615/IANA), Andockpunkt eCH prüfen
+- Mapping der Feldsemantik auf das W3C Data Privacy Vocabulary (DPV)
 - Badge-Widget als Werkzeug in diesem Repo: eine einbettbare Kurzversion der Karte («Datenfluss deklariert · Stand …») existiert bereits als Referenz auf `datenfluss-standard.ch`, fehlt hier aber noch als eigenständiges Werkzeug
 - Scanner mit Headless-Browser: erfasst auch dynamisch nachgeladene Dienste (heute nur Untergrenze)
 - Ausbau der Konformitäts-Testsuite: mehr Grenzfälle, Testfälle je Prüfprofil

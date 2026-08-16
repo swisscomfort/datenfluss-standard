@@ -52,6 +52,16 @@ The standard is implemented more than once – here in Python, in the browser, t
 
 The files in `spec/v0.1/konformitaet/` are therefore a **binding reference**, not mere examples. The naming carries the two-verdict separation: `fehler-*` violates the standard, `profilfehler-*`/`profilwarnung-*` is standard-conformant with a legal finding in profile `ch`. `erwartungen.json` records the expected outcome per case. If your implementation passes all cases, it conforms – you never need to ask us.
 
+## Predecessors and related standards
+
+Machine-readable privacy statements are not a new idea – and anyone implementing them should know why the most important predecessor failed:
+
+- **W3C P3P** (2002, officially obsolete today) let websites declare their data practices machine-readably. It failed on two fronts: almost no software consumed the statements – and once Internet Explorer used them for cookie decisions, site operators deployed generic copied policies instead of describing their actual practice. **A standardised claim alone does not create transparency.** That is exactly why this standard confronts the self-declaration with an independent measurement (measured ↔ declared) and keeps the two strictly separate: the declaration is the organisation's statement, the measurement is the outside observation, and the comparison of both is public. A copied courtesy declaration shows up in the measurement.
+- **W3C DPV** (Data Privacy Vocabulary) defines a comprehensive vocabulary for purposes, recipients and legal bases. This standard deliberately does not invent its own ontology of that depth; mapping the field semantics to DPV is on the roadmap, keeping declarations internationally interoperable.
+- **Apple Privacy Manifests** and **Google Play Data Safety** require structured, machine-readable privacy statements from apps and SDKs – the same shift from prose to verifiable metadata, but inside closed platforms. This standard carries the pattern to the open web, where no platform can force declarations – but anyone can independently re-measure them.
+
+In short: the machine-readable statement is not what is new. What is new is the **public, versioned cross-check** – self-declaration and independent measurement, collected separately and machine-comparable.
+
 ## Design principles
 
 1. **Decentralised:** the declaration lives with the organisation. Registers are interchangeable.
@@ -66,6 +76,7 @@ The files in `spec/v0.1/konformitaet/` are therefore a **binding reference**, no
 - Official French and Italian translations (multilingual declarations)
 - EU check profile (`--profil eu`, GDPR logic) as the first non-Swiss profile
 - IANA registration of the `/.well-known/` path (RFC 8615), eCH liaison
+- Mapping the field semantics to the W3C Data Privacy Vocabulary (DPV)
 - Badge widget as a tool in this repository
 - Headless-browser scanner: also captures dynamically loaded services (today's figures are a lower bound)
 - Growing the conformance suite: more edge cases, cases per check profile
