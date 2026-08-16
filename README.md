@@ -2,6 +2,8 @@
 
 **Ein offener Standard für maschinenlesbare Datenschutz-Transparenz. Das Format ist rechtsraumneutral – Referenzimplementierung und erstes Prüfprofil: Schweiz.**
 
+*English guide: [README.en.md](README.en.md) – the specification's normative language is German.*
+
 Jede Organisation deklariert in einer signierbaren JSON-Datei, welche Personendaten sie zu welchen Zwecken bearbeitet, an wen sie fliessen und wie lange sie aufbewahrt werden. Die Datei liegt auf der eigenen Domain – nicht auf einer Plattform:
 
 ```
@@ -41,17 +43,14 @@ python3 werkzeuge/scanner.py https://www.beispielfirma.ch   # gemessenes Profil 
 
 Der Scanner respektiert robots.txt (RFC 9309) und identifiziert sich ehrlich als `DatenflussScanner/0.1`. Weist ein Server diese Kennung ab (HTTP 403/406), wird die Abweisung standardmässig respektiert und nicht erneut versucht – wer unsere ehrliche Kennung ablehnt, will nicht vermessen werden. Nur mit dem ausdrücklichen Schalter `--hartnaeckig` wird ein zweiter Versuch mit Browser-Kennung unternommen; er wird dann im Profil als `abruf_hinweis` dokumentiert. Er erkennt rund 45 bekannte Dienste inkl. selbst gehostetem Matomo und Inline-Signaturen (`gtag(`, `fbq(`, `GTM-`), prüft `/.well-known/datenfluss.json` und berechnet die Abweichung **gemessen ↔ deklariert**. Methodik-Grenze, im Profil dokumentiert: statische Analyse ohne JavaScript – dynamisch via Tag Manager nachgeladene Dienste sind unsichtbar, der Befund ist eine Untergrenze.
 
-Der Validator prüft zwei Stufen:
+Der Validator fällt **zwei getrennte Urteile** über dieselbe Datei:
 
-1. **Formal** – Struktur, Pflichtfelder, Formate (UID, Datum, Ländercodes, Enums)
-2. **Semantisch** – universelle Regeln (Stand-Datum nicht in der Zukunft, Warnung ab 18 Monaten Alter, eindeutige IDs, Signatur-Hinweis) plus ein **Prüfprofil je Rechtsraum** (`--profil`, Standard `ch`):
-   - Drittlandtransfers: Empfänger ausserhalb der angemessenen Staaten brauchen eine Garantie (Art. 16 f. DSG)
-   - USA-Sonderfall: Angemessenheit nur für Empfänger mit Swiss-U.S.-DPF-Zertifizierung, mit Erinnerung zur periodischen Prüfung
-   - DSFA-Hinweise bei Hochrisiko-Profiling
+1. **Standardkonformität** (stabil) – Struktur, Pflichtfelder, Formate, universelle Regeln (Stand-Datum nicht in der Zukunft, eindeutige IDs, Signatur-Hinweis). Dieses Urteil hängt nur an der Datei: Eine heute standardkonforme Deklaration bleibt es, solange sich die Datei nicht ändert.
+2. **Rechtsbefund des Prüfprofils** (zeitabhängig, `--profil`, Standard `ch`) – Drittlandtransfers (Art. 16 f. DSG), USA-Sonderfall mit Swiss-U.S.-DPF, DSFA-Hinweise bei Hochrisiko-Profiling. Dieses Urteil hängt an der aktuellen Rechtslage und kann sich ändern, ohne dass sich ein Zeichen der Datei ändert.
 
-Die juristische Logik lebt ausschliesslich in Prüfprofilen – das Format selbst bleibt rechtsraumneutral. Ein weiterer Rechtsraum (z. B. `eu` für die DSGVO) wird als zusätzliches Profil ergänzt, ohne dass sich Schema oder bestehende Deklarationen ändern.
+Die Trennung ist der Kern der Versionierbarkeit: Streicht der Bundesrat morgen ein Land von der Angemessenheitsliste, wird keine einzige bestehende Deklaration dadurch standardwidrig – aber der Validator zeigt das neue rechtliche Problem an. Juristische Logik lebt ausschliesslich in Prüfprofilen; ein weiterer Rechtsraum (z. B. `eu` für die DSGVO) wird als zusätzliches Profil ergänzt, ohne dass sich Schema oder bestehende Deklarationen ändern.
 
-Exit-Code `0` = gültig, `1` = Fehler – damit direkt in CI/CD einsetzbar (z. B. GitHub Action, die bei jeder Website-Änderung die eigene Deklaration prüft).
+Exit-Codes, direkt in CI/CD einsetzbar: `0` = standardkonform ohne Profil-Probleme · `1` = Standard verletzt · `3` = standardkonform, aber das Prüfprofil meldet Probleme. Wer auf beides reagieren will, prüft wie üblich auf `!= 0`.
 
 ### Konformität: wie man eine eigene Umsetzung überprüft
 
@@ -62,7 +61,17 @@ python3 werkzeuge/konformitaet.py --json   # maschinenlesbares Ergebnis
 
 Der Standard wird mehrfach umgesetzt – hier in Python, im Browser eines Deklarations-Generators, morgen vielleicht von Dritten. Ohne gemeinsame Testfälle driften diese Umsetzungen auseinander, bis ein Werkzeug «gültig» sagt und das andere «ungültig». Genau das darf einem Standard nicht passieren.
 
-Deshalb sind die Dateien in `spec/v0.1/konformitaet/` **verbindliche Referenz**, nicht bloss Beispiele: gültige Deklarationen, Deklarationen mit erwarteten Fehlern und solche mit erwarteten Warnungen. `erwartungen.json` hält je Fall fest, was herauskommen muss. Wer den Standard umsetzt, sollte alle Fälle bestehen; wer ihn erweitert, ergänzt zuerst einen Testfall.
+Deshalb sind die Dateien in `spec/v0.1/konformitaet/` **verbindliche Referenz**, nicht bloss Beispiele. Die Namensgebung trägt die Trennung der zwei Urteile: `fehler-*` verletzt den Standard, `profilfehler-*`/`profilwarnung-*` ist standardkonform mit Rechtsbefund im Profil `ch`. `erwartungen.json` hält je Fall fest, was herauskommen muss. Wer den Standard umsetzt, sollte alle Fälle bestehen; wer ihn erweitert, ergänzt zuerst einen Testfall.
+
+## Vorläufer und verwandte Standards
+
+Die Idee maschinenlesbarer Datenschutz-Angaben ist nicht neu – und wer sie umsetzt, sollte wissen, woran der wichtigste Vorläufer gescheitert ist:
+
+- **W3C P3P** (2002, heute offiziell obsolet) liess Websites ihre Datenpraktiken maschinenlesbar deklarieren. Es scheiterte an zwei Dingen: Es gab kaum Software, die die Angaben konsumierte – und sobald der Internet Explorer die Angaben für Cookie-Entscheide nutzte, kopierten Betreiber generische Policies, statt ihre Praxis zu beschreiben. **Eine standardisierte Behauptung allein schafft keine Transparenz.** Genau deshalb stellt dieser Standard der Selbstdeklaration eine unabhängige Messung gegenüber (gemessen ↔ deklariert) und hält beide strikt getrennt: Die Deklaration ist die Aussage der Organisation, die Messung ist die Beobachtung von aussen, und der Vergleich der beiden ist öffentlich. Eine kopierte Gefälligkeits-Deklaration fällt am Messwert auf.
+- **W3C DPV** (Data Privacy Vocabulary) definiert ein umfassendes Vokabular für Zwecke, Empfänger und Rechtsgrundlagen. Dieser Standard erfindet bewusst keine eigene Ontologie dieser Tiefe; ein Mapping der Feldsemantik auf DPV steht auf der Roadmap, damit Deklarationen international anschlussfähig bleiben.
+- **Apple Privacy Manifests** und **Google Play Data Safety** verlangen strukturierte, maschinenlesbare Datenschutz-Angaben von Apps und SDKs – dieselbe Bewegung von Fliesstext zu prüfbarer Metainformation, aber innerhalb geschlossener Plattformen. Dieser Standard überträgt das Muster auf das offene Web, wo keine Plattform Deklarationen erzwingen kann – dafür kann jede Person sie unabhängig nachmessen.
+
+Kurz: Neu ist nicht die maschinenlesbare Erklärung. Neu ist die **öffentliche, versionierte Gegenprobe** – Selbsterklärung und unabhängige Messung, getrennt erhoben und maschinell vergleichbar.
 
 ## Design-Prinzipien
 
@@ -77,7 +86,8 @@ Deshalb sind die Dateien in `spec/v0.1/konformitaet/` **verbindliche Referenz**,
 - Signatur verpflichtend (PGP oder JWS), inkl. Schlüssel-Konvention
 - Offizielle Übersetzungen FR/IT (mehrsprachige Deklarationen)
 - EU-Prüfprofil (`--profil eu`, DSGVO-Logik) als erstes Nicht-Schweizer Profil
-- Registrierung des `/.well-known/`-Pfads, Andockpunkt eCH prüfen
+- Registrierung des `/.well-known/`-Pfads (RFC 8615/IANA), Andockpunkt eCH prüfen
+- Mapping der Feldsemantik auf das W3C Data Privacy Vocabulary (DPV)
 - Badge-Widget als Werkzeug in diesem Repo: eine einbettbare Kurzversion der Karte («Datenfluss deklariert · Stand …») existiert bereits als Referenz auf `datenfluss-standard.ch`, fehlt hier aber noch als eigenständiges Werkzeug
 - Scanner mit Headless-Browser: erfasst auch dynamisch nachgeladene Dienste (heute nur Untergrenze)
 - Ausbau der Konformitäts-Testsuite: mehr Grenzfälle, Testfälle je Prüfprofil

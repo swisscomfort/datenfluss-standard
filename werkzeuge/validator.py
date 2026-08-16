@@ -16,7 +16,14 @@ Verwendung:
     python3 validator.py --profil ch deklaration.json
     python3 validator.py --schema pfad/zum/schema.json deklaration.json
 
-Exit-Codes: 0 = gueltig (Warnungen moeglich), 1 = Fehler gefunden, 2 = Aufruf-/Dateifehler
+Exit-Codes:
+  0 = standardkonform, keine Profil-Probleme
+  1 = Standard verletzt
+  2 = Aufruf-/Dateifehler
+  3 = standardkonform, aber das Pruefprofil meldet Probleme (Rechtsbefund)
+Die Trennung 1/3 ist Absicht: Standardkonformitaet haengt nur an der Datei und
+ist stabil. Der Rechtsbefund haengt an der aktuellen Rechtslage und kann sich
+aendern, ohne dass sich ein Zeichen der Datei aendert.
 Abhaengigkeit: pip install jsonschema
 """
 
@@ -57,17 +64,47 @@ MAX_ALTER_TAGE = 548  # ~18 Monate: danach gilt die Deklaration als veraltet
 
 
 class Befund:
-    """Sammelt Fehler und Warnungen mit Fundstelle."""
+    """Sammelt zwei getrennte Urteile ueber dieselbe Datei.
+
+    Die Trennung ist keine Formsache, sondern der Kern der Versionierbarkeit:
+
+      **Standardkonformitaet ist stabil.** Sie haengt nur an Schema und
+      universellen Regeln. Eine Datei, die heute standardkonform ist, bleibt es
+      -- solange sich die Datei nicht aendert.
+
+      **Rechtskonformitaet ist zeitabhaengig.** Streicht der Bundesrat morgen
+      ein Land von der Angemessenheitsliste, aendert sich die rechtliche
+      Beurteilung derselben unveraenderten Datei.
+
+    Wuerde ein Rechtsbefund die Standardkonformitaet kippen, wuerde eine
+    gestern gueltige Deklaration heute formal standardwidrig, ohne dass jemand
+    ein Zeichen daran geaendert hat. Ein Standard, der sich so verhaelt, ist
+    als Fundament unbrauchbar -- niemand kann darauf aufbauen.
+    """
 
     def __init__(self) -> None:
-        self.fehler: list[str] = []
-        self.warnungen: list[str] = []
+        self.fehler: list[str] = []          # Standard verletzt
+        self.warnungen: list[str] = []       # Standard: Hinweis
+        self.profil_fehler: list[str] = []   # Rechtsraum verletzt
+        self.profil_warnungen: list[str] = []
 
     def f(self, pfad: str, text: str) -> None:
+        """Standardverletzung: die Datei entspricht der Spezifikation nicht."""
         self.fehler.append(f"[{pfad}] {text}")
 
     def w(self, pfad: str, text: str) -> None:
         self.warnungen.append(f"[{pfad}] {text}")
+
+    def pf(self, pfad: str, text: str) -> None:
+        """Rechtsbefund: standardkonform, aber im geprueften Rechtsraum problematisch."""
+        self.profil_fehler.append(f"[{pfad}] {text}")
+
+    def pw(self, pfad: str, text: str) -> None:
+        self.profil_warnungen.append(f"[{pfad}] {text}")
+
+    @property
+    def standard_konform(self) -> bool:
+        return not self.fehler
 
 
 def lade_json(pfad: Path) -> dict:
@@ -130,7 +167,13 @@ def pruefe_semantik_universell(dekl: dict, befund: Befund) -> None:
 
 def pruefe_profil_ch(dekl: dict, befund: Befund) -> None:
     """Pruefprofil Schweiz: Drittlandtransfers (Art. 16 f. DSG, DSV Anhang 1)
-    und DSFA-Hinweise (Art. 22 DSG)."""
+    und DSFA-Hinweise (Art. 22 DSG).
+
+    Alle Befunde hier landen bewusst in befund.pf()/pw() -- sie beurteilen die
+    Rechtslage, nicht die Standardkonformitaet. Aendert sich das Recht, aendert
+    sich dieses Urteil; das Urteil ueber die Datei als Datenfluss-Deklaration
+    bleibt davon unberuehrt.
+    """
 
     # --- Drittlandtransfers und Garantien ---------------------------------
     for i, b in enumerate(dekl.get("bearbeitungen", [])):
@@ -143,34 +186,34 @@ def pruefe_profil_ch(dekl: dict, befund: Befund) -> None:
 
             if land == "US":
                 if garantien == "nicht_erforderlich_angemessenes_land":
-                    befund.f(pfad, f"USA gelten nicht generell als angemessen – fuer '{name}' ist eine Garantie noetig (DPF-Zertifizierung, Standarddatenschutzklauseln o. ae.).")
+                    befund.pf(pfad, f"USA gelten nicht generell als angemessen – fuer '{name}' ist eine Garantie noetig (DPF-Zertifizierung, Standarddatenschutzklauseln o. ae.).")
                 elif garantien == "angemessenheit_dpf_zertifiziert":
-                    befund.w(pfad, f"DPF-Zertifizierung von '{name}' periodisch pruefen: {DPF_LISTE_URL}")
+                    befund.pw(pfad, f"DPF-Zertifizierung von '{name}' periodisch pruefen: {DPF_LISTE_URL}")
                 elif not garantien:
-                    befund.f(pfad, f"US-Empfaenger '{name}' ohne Angabe einer Garantie.")
+                    befund.pf(pfad, f"US-Empfaenger '{name}' ohne Angabe einer Garantie.")
             elif land in ANGEMESSENE_LAENDER:
                 if not garantien:
-                    befund.w(pfad, f"'{name}' ({land}): Garantie fehlt – 'nicht_erforderlich_angemessenes_land' kann gesetzt werden.")
+                    befund.pw(pfad, f"'{name}' ({land}): Garantie fehlt – 'nicht_erforderlich_angemessenes_land' kann gesetzt werden.")
                 elif garantien == "angemessenheit_dpf_zertifiziert":
-                    befund.f(pfad, "Garantie 'angemessenheit_dpf_zertifiziert' ist US-Empfaengern vorbehalten.")
+                    befund.pf(pfad, "Garantie 'angemessenheit_dpf_zertifiziert' ist US-Empfaengern vorbehalten.")
             else:  # weder angemessen noch US
                 if not garantien:
-                    befund.f(pfad, f"'{name}' ({land}): Land ohne angemessenes Schutzniveau – Garantie erforderlich (Art. 16 f. DSG).")
+                    befund.pf(pfad, f"'{name}' ({land}): Land ohne angemessenes Schutzniveau – Garantie erforderlich (Art. 16 f. DSG).")
                 elif garantien == "nicht_erforderlich_angemessenes_land":
-                    befund.f(pfad, f"'{name}' ({land}): Land gilt nicht als angemessen – 'nicht_erforderlich_angemessenes_land' ist unzulaessig.")
+                    befund.pf(pfad, f"'{name}' ({land}): Land gilt nicht als angemessen – 'nicht_erforderlich_angemessenes_land' ist unzulaessig.")
                 elif garantien == "angemessenheit_dpf_zertifiziert":
-                    befund.f(pfad, "Garantie 'angemessenheit_dpf_zertifiziert' ist US-Empfaengern vorbehalten.")
+                    befund.pf(pfad, "Garantie 'angemessenheit_dpf_zertifiziert' ist US-Empfaengern vorbehalten.")
 
             if sensibel and land not in ANGEMESSENE_LAENDER:
-                befund.w(pfad, f"Besonders schuetzenswerte Daten fliessen an '{name}' ({land}) – erhoehte Sorgfalt und ggf. DSFA angezeigt.")
+                befund.pw(pfad, f"Besonders schuetzenswerte Daten fliessen an '{name}' ({land}) – erhoehte Sorgfalt und ggf. DSFA angezeigt.")
 
     # --- DSFA-Hinweise -----------------------------------------------------
     dsfa = dekl.get("dsfa_vorhanden")
     for i, b in enumerate(dekl.get("bearbeitungen", [])):
         if b.get("profiling_hohes_risiko") and not dsfa:
-            befund.w(f"bearbeitungen/{i}", "Profiling mit hohem Risiko deklariert, aber keine DSFA vorhanden (Art. 22 DSG pruefen).")
+            befund.pw(f"bearbeitungen/{i}", "Profiling mit hohem Risiko deklariert, aber keine DSFA vorhanden (Art. 22 DSG pruefen).")
         if b.get("automatisierte_einzelentscheidung") and not dsfa:
-            befund.w(f"bearbeitungen/{i}", "Automatisierte Einzelentscheidung deklariert – DSFA-Pflicht pruefen.")
+            befund.pw(f"bearbeitungen/{i}", "Automatisierte Einzelentscheidung deklariert – DSFA-Pflicht pruefen.")
 
 
 # Registrierte Pruefprofile: Kuerzel -> (Beschreibung, Pruef-Funktion).
@@ -200,17 +243,42 @@ def main() -> int:
         PROFILE[args.profil][1](deklaration, befund)
 
     name = deklaration.get("organisation", {}).get("name", args.deklaration.name)
-    print(f"Datenfluss-Validator v0.1 – Pruefung von: {name} (Pruefprofil: {args.profil})")
+    print(f"Datenfluss-Validator v0.1 – Pruefung von: {name}")
     print("-" * 60)
-    for w in befund.warnungen:
-        print(f"  WARNUNG  {w}")
+    print("STANDARD v0.1 (rechtsraumunabhaengig)")
     for f in befund.fehler:
         print(f"  FEHLER   {f}")
+    for w in befund.warnungen:
+        print(f"  WARNUNG  {w}")
+    if befund.standard_konform:
+        print(f"  -> STANDARDKONFORM ({len(befund.warnungen)} Warnungen)")
+    else:
+        print(f"  -> NICHT STANDARDKONFORM ({len(befund.fehler)} Fehler)")
+
+    print(f"PRUEFPROFIL {args.profil} – {PROFILE[args.profil][0]}")
+    for f in befund.profil_fehler:
+        print(f"  PROBLEM  {f}")
+    for w in befund.profil_warnungen:
+        print(f"  HINWEIS  {w}")
+    if not befund.profil_fehler and not befund.profil_warnungen:
+        print("  -> keine Befunde")
     print("-" * 60)
-    if befund.fehler:
-        print(f"Ergebnis: UNGUELTIG – {len(befund.fehler)} Fehler, {len(befund.warnungen)} Warnungen.")
+
+    # Zwei getrennte Urteile, drei Exit-Codes:
+    #   0 = standardkonform, keine Profil-Probleme
+    #   1 = Standard verletzt (stabil: aendert sich nur, wenn die Datei sich aendert)
+    #   3 = standardkonform, aber das Pruefprofil meldet Probleme (zeitabhaengig:
+    #       kann sich mit der Rechtslage aendern, ohne dass die Datei sich aendert)
+    # CI-Nutzer, die auf beides reagieren wollen, pruefen auf != 0 wie bisher.
+    if not befund.standard_konform:
+        print(f"Ergebnis: NICHT STANDARDKONFORM – {len(befund.fehler)} Fehler.")
         return 1
-    print(f"Ergebnis: GUELTIG – 0 Fehler, {len(befund.warnungen)} Warnungen.")
+    if befund.profil_fehler:
+        print(f"Ergebnis: STANDARDKONFORM, aber {len(befund.profil_fehler)} Problem(e) "
+              f"im Pruefprofil {args.profil}.")
+        return 3
+    print(f"Ergebnis: STANDARDKONFORM – 0 Fehler, {len(befund.warnungen)} Warnungen, "
+          f"{len(befund.profil_warnungen)} Profil-Hinweise.")
     return 0
 
 

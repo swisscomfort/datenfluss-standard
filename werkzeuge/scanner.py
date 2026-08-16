@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from html.parser import HTMLParser
@@ -177,6 +178,63 @@ def ordne_zu(host_pfad: str) -> tuple[str, str, str] | None:
     return None
 
 
+class _DeklFertig(Exception):
+    """Kontrollfluss: Deklarations-Status wurde bereits geschrieben."""
+
+
+def _git_commit() -> str | None:
+    """Commit-Hash des Scanner-Codes, falls aus einem Git-Checkout gestartet."""
+    try:
+        return subprocess.run(
+            ["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=5, check=True,
+        ).stdout.strip() or None
+    except Exception:
+        return None
+
+
+def _deklaration_pruefen(dekl: dict) -> tuple[str, list[str]]:
+    """Konformitaetsurteil ueber eine gefundene Deklaration.
+
+    Nur eine Datei, die den Standard tatsaechlich erfuellt, verdient spaeter
+    das Etikett DEKLARIERT. Ein beliebiges Stueck JSON am richtigen Pfad
+    beweist nichts – wer das durchwinkt, macht das Register-Versprechen
+    "gemessen -> deklariert -> verifiziert" an der mittleren Stufe wertlos.
+
+    Geprueft wird ausschliesslich die STANDARD-Konformitaet (Schema plus
+    universelle Regeln). Rechtsbefunde eines Pruefprofils gehoeren bewusst
+    nicht hierher: Sie sind zeitabhaengig und machen eine Datei nie
+    standardwidrig – eine Firma mit rechtlichem Klaerungsbedarf hat trotzdem
+    korrekt deklariert.
+    """
+    version = dekl.get("spec_version")
+    if version != "0.1":
+        return "version_nicht_unterstuetzt", [f"spec_version '{version}' – dieser Scanner kennt 0.1"]
+    try:
+        from jsonschema import Draft202012Validator, FormatChecker
+    except ImportError:
+        return "gefunden_ungeprueft", ["Bibliothek 'jsonschema' fehlt – Konformitaet nicht geprueft"]
+    schema_pfad = Path(__file__).resolve().parents[1] / "spec" / "v0.1" / "datenfluss.schema.json"
+    if not schema_pfad.exists():
+        return "gefunden_ungeprueft", ["Schema nicht gefunden – Konformitaet nicht geprueft"]
+    schema = json.loads(schema_pfad.read_text(encoding="utf-8"))
+
+    fehler: list[str] = []
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    for err in sorted(validator.iter_errors(dekl), key=lambda e: list(e.absolute_path)):
+        pfad = "/".join(str(x) for x in err.absolute_path) or "(wurzel)"
+        fehler.append(f"[{pfad}] {err.message}")
+    if not fehler:
+        # Dieselben universellen Regeln wie der Validator – ein Regelwerk, nicht zwei.
+        from validator import Befund, pruefe_semantik_universell
+        befund = Befund()
+        pruefe_semantik_universell(dekl, befund)
+        fehler.extend(befund.fehler)
+    if fehler:
+        return "nicht_konform", fehler[:5]
+    return "konform", []
+
+
 def scanne(url: str, hartnaeckig: bool = False) -> dict:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
@@ -186,6 +244,11 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
         "gescannt_am": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "methodik": "Statischer Abruf der Startseite ohne JavaScript-Ausfuehrung (Untergrenze).",
         "scanner_version": "0.1",
+        # Der genaue Code-Stand der Messung. Ohne ihn kann eine spaetere
+        # Abweichung zweierlei bedeuten – die Website hat sich geaendert oder
+        # der Scanner – und niemand kann es unterscheiden. Eine Zeitreihe, die
+        # Vertrauen tragen soll, muss diese Frage beantworten koennen.
+        "scanner_commit": _git_commit(),
     }
 
     if not robots_erlaubt(url):
@@ -264,13 +327,25 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
 
     # ---- Deklaration pruefen und Abweichung berechnen ----------------------
     basis = f"{urlparse(finale_url).scheme}://{urlparse(finale_url).netloc}"
-    dekl_info: dict = {"vorhanden": False}
+    dekl_info: dict = {"status": "nicht_gefunden", "vorhanden": False}
     try:
         _, _, _, dekl_text = hole(urljoin(basis, "/.well-known/datenfluss.json"), ua)
-        dekl = json.loads(dekl_text)
-        dekl_info = {"vorhanden": True, "spec_version": dekl.get("spec_version"),
+        try:
+            dekl = json.loads(dekl_text)
+            if not isinstance(dekl, dict):
+                raise ValueError("kein JSON-Objekt")
+        except ValueError as exc:
+            profil["datenfluss_deklaration"] = {
+                "status": "unlesbar", "vorhanden": True,
+                "befunde": [f"Datei ist kein gueltiges JSON-Objekt ({exc})"]}
+            raise _DeklFertig
+        status, befunde = _deklaration_pruefen(dekl)
+        dekl_info = {"status": status, "vorhanden": True,
+                     "spec_version": dekl.get("spec_version"),
                      "stand": dekl.get("stand"),
                      "organisation": dekl.get("organisation", {}).get("name")}
+        if befunde:
+            dekl_info["befunde"] = befunde
         deklarierte = " ".join(
             f'{e.get("name", "")} {e.get("dienst", "")} {e.get("website", "")}'.lower()
             for b in dekl.get("bearbeitungen", []) for e in b.get("empfaenger", [])
@@ -282,9 +357,11 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
                 fehlend.append(eintrag["anbieter"])
         dekl_info["gemessen_aber_nicht_deklariert"] = sorted(fehlend)
         dekl_info["abgleich_hinweis"] = "Namensbasierter Abgleich (Heuristik) – manuell verifizieren."
+        profil["datenfluss_deklaration"] = dekl_info
+    except _DeklFertig:
+        pass  # Status wurde oben bereits gesetzt
     except Exception:
-        pass
-    profil["datenfluss_deklaration"] = dekl_info
+        profil["datenfluss_deklaration"] = dekl_info  # nicht_gefunden
 
     try:  # kleiner Bruder-Standard als Bonus-Signal
         _, s, _, _ = hole(urljoin(basis, "/.well-known/security.txt"), ua)
@@ -308,12 +385,17 @@ def zusammenfassung(p: dict) -> str:
     for e in p["drittanbieter"]:
         z.append(f"    - [{e['kategorie']:>14}] {e['anbieter']} ({e['sitz_hinweis']})")
     d = p["datenfluss_deklaration"]
-    if d.get("vorhanden"):
-        z.append(f"  Deklaration: VORHANDEN (Stand {d.get('stand')}, {d.get('organisation')})")
+    status = d.get("status", "nicht_gefunden")
+    if status == "konform":
+        z.append(f"  Deklaration: KONFORM (Stand {d.get('stand')}, {d.get('organisation')})")
         fehlt = d.get("gemessen_aber_nicht_deklariert", [])
         z.append("  Abweichung gemessen↔deklariert: " + (", ".join(fehlt) if fehlt else "keine"))
-    else:
+    elif status == "nicht_gefunden":
         z.append("  Deklaration: keine /.well-known/datenfluss.json gefunden")
+    else:
+        z.append(f"  Deklaration: Datei gefunden, aber {status.upper()}")
+        for b in d.get("befunde", [])[:3]:
+            z.append(f"    {b}")
     z.append(f"  security.txt: {'ja' if p.get('security_txt') else 'nein'}")
     return "\n".join(z)
 
