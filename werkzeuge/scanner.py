@@ -153,6 +153,26 @@ def hole(url: str, ua: str = USER_AGENT):
         return antwort.geturl(), antwort.status, dict(antwort.headers), text
 
 
+def _abruf_beleg(exc: Exception) -> dict:
+    """Roh-Evidenz eines gescheiterten Abrufs, damit der Befund adjudizierbar ist.
+
+    Ein Profil, das nur "nicht erreichbar" behauptet, ist so unbeweisbar wie
+    die Fehlermeldung einer fremden Fetch-Pipeline: Wer den Befund bestreitet,
+    steht vor einer Behauptung statt vor einem Beleg. Deshalb halten wir fest,
+    was die Messkette tatsaechlich gesehen hat - Fehlerklasse, HTTP-Status und
+    ausgewaehlte Antwort-Header (keine Personendaten, nur Server-Metadaten).
+    Der Zeitpunkt steht bereits in gescannt_am.
+    """
+    beleg: dict = {"fehlerklasse": exc.__class__.__name__}
+    if isinstance(exc, HTTPError):
+        beleg["http_status"] = exc.code
+        interessant = ("server", "content-type", "retry-after", "via",
+                       "location", "cf-ray", "cf-mitigated", "x-served-by")
+        beleg["antwort_header"] = {k: str(v)[:200] for k, v in (exc.headers or {}).items()
+                                   if k.lower() in interessant}
+    return beleg
+
+
 def robots_erlaubt(basis: str) -> bool:
     """robots.txt mit eigener Kennung laden und wirklich auswerten.
 
@@ -279,6 +299,7 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
         profil["status"] = "fehler"
         profil["fehler"] = str(exc)
+        profil["abruf_beleg"] = _abruf_beleg(exc)
         return profil
 
     profil["finale_url"] = finale_url

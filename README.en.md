@@ -20,7 +20,7 @@ Platforms, browser extensions, fiduciary software and registers can crawl, valid
 | `beispiele/beispiel-deklaration.json` | Complete example declaration of the fictional **Alpenkafi GmbH** (web shop, newsletter, analytics, support) |
 | `werkzeuge/validator.py` | Validates declarations formally (schema) and semantically (universal rules + one legal-check profile per jurisdiction, today: `ch`) |
 | `werkzeuge/renderer.py` | Reference renderer: turns a declaration into the human-readable HTML "data-flow card" |
-| `werkzeuge/scanner.py` | Scanner prototype: measures statically embedded third parties of a website and compares them with its declaration (measured ↔ declared) |
+| `werkzeuge/scanner.py` | Scanner prototype: measures statically embedded third parties of a website and compares them with its declaration (measured ↔ declared). Failed fetches store raw evidence (`abruf_beleg`: error class, HTTP status, selected response headers) so a disputed finding can be adjudicated instead of merely asserted |
 | `werkzeuge/konformitaet.py` | Conformance test suite: checks an implementation against the binding test cases |
 | `spec/v0.1/konformitaet/` | The test cases themselves plus `erwartungen.json` – the reference every implementation must pass |
 
