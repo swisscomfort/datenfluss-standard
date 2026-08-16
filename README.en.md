@@ -20,7 +20,7 @@ Platforms, browser extensions, fiduciary software and registers can crawl, valid
 | `beispiele/beispiel-deklaration.json` | Complete example declaration of the fictional **Alpenkafi GmbH** (web shop, newsletter, analytics, support) |
 | `werkzeuge/validator.py` | Validates declarations formally (schema) and semantically (universal rules + one legal-check profile per jurisdiction, today: `ch`) |
 | `werkzeuge/renderer.py` | Reference renderer: turns a declaration into the human-readable HTML "data-flow card" |
-| `werkzeuge/scanner.py` | Scanner prototype: measures statically embedded third parties of a website and compares them with its declaration (measured ↔ declared) |
+| `werkzeuge/scanner.py` | Scanner prototype: measures statically embedded third parties of a website and compares them with its declaration (measured ↔ declared). Failed fetches store raw evidence (`abruf_beleg`: error class, HTTP status, selected response headers) so a disputed finding can be adjudicated instead of merely asserted |
 | `werkzeuge/konformitaet.py` | Conformance test suite: checks an implementation against the binding test cases |
 | `spec/v0.1/konformitaet/` | The test cases themselves plus `erwartungen.json` – the reference every implementation must pass |
 
@@ -52,6 +52,8 @@ The standard is implemented more than once – here in Python, in the browser, t
 
 The files in `spec/v0.1/konformitaet/` are therefore a **binding reference**, not mere examples. The naming carries the two-verdict separation: `fehler-*` violates the standard, `profilfehler-*`/`profilwarnung-*` is standard-conformant with a legal finding in profile `ch`. `erwartungen.json` records the expected outcome per case. If your implementation passes all cases, it conforms – you never need to ask us.
 
+One binding rule for registers built on this standard: **a website counts as declared only if its file passes the standard check.** A file that is found but not conformant is shown as exactly that – with the concrete findings as a route description, not a pillory. Without this rule, a successful JSON parse rather than the standard would decide who carries the mark, and the middle level of trust would be worthless.
+
 ## Predecessors and related standards
 
 Machine-readable privacy statements are not a new idea – and anyone implementing them should know why the most important predecessor failed:
@@ -77,6 +79,7 @@ In short: the machine-readable statement is not what is new. What is new is the 
 - EU check profile (`--profil eu`, GDPR logic) as the first non-Swiss profile
 - IANA registration of the `/.well-known/` path (RFC 8615), eCH liaison
 - Mapping the field semantics to the W3C Data Privacy Vocabulary (DPV)
+- Matching recognised providers against the public Swiss–U.S. DPF certification list: turns the externally invisible question "is a safeguard in place?" into a measurable signal
 - Badge widget as a tool in this repository
 - Headless-browser scanner: also captures dynamically loaded services (today's figures are a lower bound)
 - Growing the conformance suite: more edge cases, cases per check profile

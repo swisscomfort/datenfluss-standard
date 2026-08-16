@@ -41,7 +41,9 @@ Der Renderer braucht nur die Python-Standardbibliothek und erzeugt eine in sich 
 python3 werkzeuge/scanner.py https://www.beispielfirma.ch   # gemessenes Profil nach ./profile/
 ```
 
-Der Scanner respektiert robots.txt (RFC 9309) und identifiziert sich ehrlich als `DatenflussScanner/0.1`. Weist ein Server diese Kennung ab (HTTP 403/406), wird die Abweisung standardmässig respektiert und nicht erneut versucht – wer unsere ehrliche Kennung ablehnt, will nicht vermessen werden. Nur mit dem ausdrücklichen Schalter `--hartnaeckig` wird ein zweiter Versuch mit Browser-Kennung unternommen; er wird dann im Profil als `abruf_hinweis` dokumentiert. Er erkennt rund 45 bekannte Dienste inkl. selbst gehostetem Matomo und Inline-Signaturen (`gtag(`, `fbq(`, `GTM-`), prüft `/.well-known/datenfluss.json` und berechnet die Abweichung **gemessen ↔ deklariert**. Methodik-Grenze, im Profil dokumentiert: statische Analyse ohne JavaScript – dynamisch via Tag Manager nachgeladene Dienste sind unsichtbar, der Befund ist eine Untergrenze.
+Der Scanner respektiert robots.txt (RFC 9309) und identifiziert sich ehrlich als `DatenflussScanner/0.1`. Weist ein Server diese Kennung ab (HTTP 403/406), wird die Abweisung standardmässig respektiert und nicht erneut versucht – wer unsere ehrliche Kennung ablehnt, will nicht vermessen werden. Nur mit dem ausdrücklichen Schalter `--hartnaeckig` wird ein zweiter Versuch mit Browser-Kennung unternommen; er wird dann im Profil als `abruf_hinweis` dokumentiert. Er erkennt rund 45 bekannte Dienste inkl. selbst gehostetem Matomo und Inline-Signaturen (`gtag(`, `fbq(`, `GTM-`), prüft `/.well-known/datenfluss.json` und berechnet die Abweichung **gemessen ↔ deklariert**. Methodik-Grenze, im Profil dokumentiert: statische Analyse ohne JavaScript – dynamisch via Tag Manager nachgeladene Dienste sind unsichtbar, der Befund ist eine Untergrenze. Scheitert ein Abruf, speichert das Profil Roh-Evidenz (`abruf_beleg`: Fehlerklasse, HTTP-Status, ausgewählte Antwort-Header): Ein Messwerkzeug, das «nicht erreichbar» nur behauptet, statt es zu belegen, produziert unbestreitbare Befunde – und genau solche Befunde werden zu Recht bestritten.
+
+Für Register, die auf diesem Standard aufbauen, gilt dabei eine verbindliche Regel: **Als deklariert zählt eine Website nur, wenn ihre Datei die Standardprüfung besteht.** Eine gefundene, aber nicht konforme Datei wird als solche ausgewiesen – mit den konkreten Befunden als Wegbeschreibung, nicht als Pranger. Ohne diese Regel entschiede ein gelungener JSON-Parse statt des Standards darüber, wer die Marke trägt, und die mittlere Vertrauensstufe wäre wertlos.
 
 Der Validator fällt **zwei getrennte Urteile** über dieselbe Datei:
 
@@ -88,6 +90,7 @@ Kurz: Neu ist nicht die maschinenlesbare Erklärung. Neu ist die **öffentliche,
 - EU-Prüfprofil (`--profil eu`, DSGVO-Logik) als erstes Nicht-Schweizer Profil
 - Registrierung des `/.well-known/`-Pfads (RFC 8615/IANA), Andockpunkt eCH prüfen
 - Mapping der Feldsemantik auf das W3C Data Privacy Vocabulary (DPV)
+- Abgleich der erkannten Anbieter mit der öffentlichen Swiss-U.S.-DPF-Zertifizierungsliste: macht aus der von aussen unsichtbaren Frage «liegt eine Garantie vor?» ein messbares Signal
 - Badge-Widget als Werkzeug in diesem Repo: eine einbettbare Kurzversion der Karte («Datenfluss deklariert · Stand …») existiert bereits als Referenz auf `datenfluss-standard.ch`, fehlt hier aber noch als eigenständiges Werkzeug
 - Scanner mit Headless-Browser: erfasst auch dynamisch nachgeladene Dienste (heute nur Untergrenze)
 - Ausbau der Konformitäts-Testsuite: mehr Grenzfälle, Testfälle je Prüfprofil
