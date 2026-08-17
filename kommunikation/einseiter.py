@@ -102,7 +102,7 @@ def erstelle(ziel: Path):
     c.roundRect(18, 18, B - 36, H - 36, 10, stroke=1, fill=1)
 
     y = H - 64
-    text(c, RAND, y, "DATENFLUSS-STANDARD · ARBEITSTITEL · SPEZIFIKATION V0.1",
+    text(c, RAND, y, "DATENFLUSS-STANDARD · SPEZIFIKATION V0.1 · ENTWURF",
          "PlexMono", 8.5, GRAU, ls=1.4)
     y -= 30
     text(c, RAND, y, "Datenschutz, den man sehen kann.", "PlexSans-B", 27, TINTE)
@@ -175,7 +175,7 @@ def erstelle(ziel: Path):
     text(c, RAND, y, "DREI VERTRAUENSSTUFEN", "PlexMono-SB", 8.5, TINTE, ls=1.2)
     y -= 20
     tx = RAND
-    for s, warn in [("GEMESSEN – Aussen-Scan", False), ("DEKLARIERT – signierte Datei", False),
+    for s, warn in [("GEMESSEN – Aussen-Scan", False), ("DEKLARIERT – konforme Datei", False),
                     ("VERIFIZIERT – Prüfung durch Dritte", False)]:
         tx += tag(c, tx, y - 2, s) + 8
         if s != "VERIFIZIERT – Prüfung durch Dritte":
@@ -214,12 +214,15 @@ def erstelle(ziel: Path):
          "Werkzeug zuerst – die Norm folgt der Gewohnheit.",
          "PlexMono", 8, GRAU)
 
-    # Fusszeile
+    # Fusszeile, zweizeilig: einzeilig kollidierten Kontakt- und Lizenzangabe
+    # (525 pt Text auf 503 pt nutzbarer Breite).
     c.setStrokeColor(LINIE)
     c.line(RAND, 64, B - RAND, 64)
-    text(c, RAND, 48, "Jean Jacques Emil Martin · kontakt@datenfluss-standard.ch · github.com/swisscomfort/datenfluss-standard", "PlexMono", 8.5, GRAU)
+    text(c, RAND, 48, "Emil Martin · datenfluss-standard.ch · kontakt@datenfluss-standard.ch",
+         "PlexMono", 8.5, GRAU)
+    text(c, RAND, 35, "github.com/swisscomfort/datenfluss-standard", "PlexMono", 8.5, GRAU)
     text(c, B - RAND - pdfmetrics.stringWidth("Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5),
-         48, "Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5, GRAU)
+         35, "Spezifikation CC BY 4.0 · Code MIT", "PlexMono", 8.5, GRAU)
 
     c.showPage()
     c.save()
