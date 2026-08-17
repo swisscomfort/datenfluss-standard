@@ -251,7 +251,7 @@ def main() -> int:
     for w in befund.warnungen:
         print(f"  WARNUNG  {w}")
     if befund.standard_konform:
-        print(f"  -> STANDARDKONFORM ({len(befund.warnungen)} Warnungen)")
+        print(f"  -> STANDARDKONFORM ({len(befund.warnungen)} Warnung(en))")
     else:
         print(f"  -> NICHT STANDARDKONFORM ({len(befund.fehler)} Fehler)")
 
@@ -277,8 +277,8 @@ def main() -> int:
         print(f"Ergebnis: STANDARDKONFORM, aber {len(befund.profil_fehler)} Problem(e) "
               f"im Pruefprofil {args.profil}.")
         return 3
-    print(f"Ergebnis: STANDARDKONFORM – 0 Fehler, {len(befund.warnungen)} Warnungen, "
-          f"{len(befund.profil_warnungen)} Profil-Hinweise.")
+    print(f"Ergebnis: STANDARDKONFORM – 0 Fehler, {len(befund.warnungen)} Warnung(en), "
+          f"{len(befund.profil_warnungen)} Profil-Hinweis(e).")
     return 0
 
 
