@@ -1,43 +1,60 @@
 {
   "_hinweis": "Verbindliche Erwartungen je Testfall. 'gueltig' meint STANDARDKONFORM (stabil, haengt nur an der Datei). Befunde eines Pruefprofils (profil_*) sind Rechtsbefunde: zeitabhaengig, sie machen eine Datei nie standardwidrig. Dateinamen: fehler-* verletzen den Standard, profilfehler-*/profilwarnung-* sind standardkonform mit Rechtsbefund im Profil ch.",
-
   "gueltig-minimal.json": {
     "gueltig": true
   },
   "gueltig-us-mit-dpf.json": {
     "gueltig": true,
-    "profil_warnung_enthalten": ["empfaenger/0"]
+    "profil_warnung_enthalten": [
+      "empfaenger/0"
+    ]
   },
   "fehler-pflichtfeld-fehlt.json": {
     "gueltig": false,
-    "fehler_enthalten": ["(wurzel)"]
+    "fehler_enthalten": [
+      "(wurzel)"
+    ]
   },
   "fehler-doppelte-kennung.json": {
     "gueltig": false,
-    "fehler_enthalten": ["bearbeitungen/1/id"]
-  },
-  "fehler-stand-in-zukunft.json": {
-    "gueltig": false,
-    "fehler_enthalten": ["stand"]
+    "fehler_enthalten": [
+      "bearbeitungen/1/id"
+    ]
   },
   "profilfehler-us-ohne-garantie.json": {
     "gueltig": true,
-    "profil_fehler_enthalten": ["bearbeitungen/0/empfaenger/0"]
+    "profil_fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
   },
   "profilfehler-us-als-angemessen-deklariert.json": {
     "gueltig": true,
-    "profil_fehler_enthalten": ["bearbeitungen/0/empfaenger/0"]
+    "profil_fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
   },
   "profilfehler-drittland-ohne-garantie.json": {
     "gueltig": true,
-    "profil_fehler_enthalten": ["bearbeitungen/0/empfaenger/0"]
+    "profil_fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
   },
   "profilfehler-dpf-bei-nicht-us.json": {
     "gueltig": true,
-    "profil_fehler_enthalten": ["bearbeitungen/0/empfaenger/0"]
+    "profil_fehler_enthalten": [
+      "bearbeitungen/0/empfaenger/0"
+    ]
   },
   "profilwarnung-profiling-ohne-dsfa.json": {
     "gueltig": true,
-    "profil_warnung_enthalten": ["bearbeitungen/0"]
+    "profil_warnung_enthalten": [
+      "bearbeitungen/0"
+    ]
+  },
+  "profilfehler-stand-in-zukunft.json": {
+    "gueltig": true,
+    "profil_fehler_enthalten": [
+      "stand"
+    ]
   }
 }

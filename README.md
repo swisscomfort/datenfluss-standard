@@ -96,7 +96,7 @@ Kurz: Neu ist nicht die maschinenlesbare Erklärung. Neu ist die **öffentliche,
 ## Design-Prinzipien
 
 1. **Dezentral:** Die Deklaration liegt bei der Organisation. Register sind austauschbar.
-2. **Ehrlichkeit durch Öffentlichkeit:** Eine falsche öffentliche Deklaration ist lauterkeitsrechtlich angreifbar – Publizität diszipliniert.
+2. **Ehrlichkeit durch Öffentlichkeit:** Unrichtige öffentliche Angaben können rechtliche Folgen haben – die Beurteilung hängt vom Einzelfall ab. Publizität diszipliniert, weil die Aussage datiert, strukturiert und nachprüfbar ist.
 3. **Erweiterbar, aber streng:** Unbekannte Felder sind verboten, ausser mit Präfix `x_` (kontrollierte Innovation).
 4. **Rechtsraumneutral im Format, DSG-nah im ersten Profil:** Begriffe folgen dem Schweizer DSG; optionale Felder (Rechtsgrundlagen) schlagen die Brücke zur DSGVO. Juristische Prüflogik ist als austauschbares Prüfprofil vom Format getrennt.
 5. **Drei Vertrauensstufen** (ausserhalb dieser Spezifikation): gemessen → deklariert → verifiziert.

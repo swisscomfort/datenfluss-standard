@@ -348,12 +348,14 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
         key=lambda e: (e["kategorie"], e["anbieter"]),
     )
     profil["unbekannte_externe_hosts"] = sorted(unbekannt)
-    cookies = headers.get("Set-Cookie")
-    profil["cookies_beim_erstaufruf"] = len(cookies.split(",")) if cookies else 0
+    # get_all() liefert jeden Set-Cookie-Header einzeln. Ein split(",") waere
+    # doppelt falsch: get() gibt nur den ersten Header zurueck, und Kommas
+    # kommen in 'Expires=Wed, 09 Jun 2027 ...' regulaer vor.
+    profil["cookies_beim_erstaufruf"] = len(headers.get_all("Set-Cookie") or [])
 
     # ---- Deklaration pruefen und Abweichung berechnen ----------------------
     basis = f"{urlparse(finale_url).scheme}://{urlparse(finale_url).netloc}"
-    dekl_info: dict = {"status": "nicht_gefunden", "vorhanden": False}
+    dekl_info: dict = {"status": "nicht_vorhanden", "vorhanden": False}
     try:
         _, _, _, dekl_text = hole(urljoin(basis, "/.well-known/datenfluss.json"), ua)
         try:
@@ -386,8 +388,29 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
         profil["datenfluss_deklaration"] = dekl_info
     except _DeklFertig:
         pass  # Status wurde oben bereits gesetzt
-    except Exception:
-        profil["datenfluss_deklaration"] = dekl_info  # nicht_gefunden
+    except HTTPError as exc:
+        # 404 heisst wirklich "nicht vorhanden". Jeder andere HTTP-Fehler
+        # heisst "nicht beurteilbar" -- ihn als Abwesenheit zu melden, waere
+        # eine Behauptung ueber eine Datei, die wir nie gesehen haben.
+        if exc.code == 404:
+            dekl_info["status"] = "nicht_vorhanden"
+        else:
+            dekl_info["status"] = "nicht_abrufbar"
+            dekl_info["abruf_fehler"] = f"HTTP {exc.code}"
+        profil["datenfluss_deklaration"] = dekl_info
+    except (TimeoutError, URLError, OSError) as exc:
+        grund = getattr(exc, "reason", exc)
+        dekl_info["status"] = "nicht_erreichbar"
+        dekl_info["abruf_fehler"] = f"{type(exc).__name__}: {grund}"
+        profil["datenfluss_deklaration"] = dekl_info
+    except json.JSONDecodeError as exc:
+        dekl_info["status"] = "kein_gueltiges_json"
+        dekl_info["abruf_fehler"] = str(exc)
+        profil["datenfluss_deklaration"] = dekl_info
+    except Exception as exc:  # unerwartet: benennen, nicht als Abwesenheit tarnen
+        dekl_info["status"] = "pruefung_fehlgeschlagen"
+        dekl_info["abruf_fehler"] = f"{type(exc).__name__}: {exc}"
+        profil["datenfluss_deklaration"] = dekl_info
 
     try:  # kleiner Bruder-Standard als Bonus-Signal
         _, s, _, _ = hole(urljoin(basis, "/.well-known/security.txt"), ua)
@@ -411,13 +434,26 @@ def zusammenfassung(p: dict) -> str:
     for e in p["drittanbieter"]:
         z.append(f"    - [{e['kategorie']:>14}] {e['anbieter']} ({e['sitz_hinweis']})")
     d = p["datenfluss_deklaration"]
-    status = d.get("status", "nicht_gefunden")
+    status = d.get("status", "nicht_vorhanden")
+    # Nicht-Wissen und Abwesenheit sind zweierlei. Nur der erste Block darf
+    # sagen "keine Deklaration"; alles andere sagt, warum wir es nicht wissen.
+    UNGEWISS = {
+        "nicht_erreichbar": "Server nicht erreichbar",
+        "nicht_abrufbar": "Abruf abgewiesen",
+        "kein_gueltiges_json": "Datei gefunden, aber kein gueltiges JSON",
+        "pruefung_fehlgeschlagen": "Pruefung fehlgeschlagen",
+    }
     if status == "konform":
         z.append(f"  Deklaration: KONFORM (Stand {d.get('stand')}, {d.get('organisation')})")
         fehlt = d.get("gemessen_aber_nicht_deklariert", [])
         z.append("  Abweichung gemessen↔deklariert: " + (", ".join(fehlt) if fehlt else "keine"))
-    elif status == "nicht_gefunden":
-        z.append("  Deklaration: keine /.well-known/datenfluss.json gefunden")
+    elif status == "nicht_vorhanden":
+        z.append("  Deklaration: keine /.well-known/datenfluss.json vorhanden (HTTP 404)")
+    elif status in UNGEWISS:
+        grund = d.get("abruf_fehler", "")
+        z.append(f"  Deklaration: UNGEKLAERT – {UNGEWISS[status]}"
+                 + (f" ({grund})" if grund else ""))
+        z.append("    Das ist kein Nachweis, dass keine Deklaration existiert.")
     else:
         z.append(f"  Deklaration: Datei gefunden, aber {status.upper()}")
         for b in d.get("befunde", [])[:3]:

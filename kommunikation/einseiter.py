@@ -142,8 +142,9 @@ def erstelle(ziel: Path):
     schritte = [
         ("1  Deklarieren", "Die Firma beschreibt ihre Datenflüsse einmal in einer offenen "
                            "JSON-Datei auf der eigenen Domain – Zwecke, Empfänger, Länder, Fristen."),
-        ("2  Prüfen", "Validator und Website-Scanner gleichen Deklaration und Realität ab: "
-                      "gemessen ↔ deklariert, Drittland-Regeln nach DSG inklusive."),
+        ("2  Prüfen", "Der Validator prüft die Datei gegen Schema und Schweizer Prüfprofil; "
+                      "der Scanner misst, was von aussen sichtbar ist, und zeigt Abweichungen "
+                      "zur Deklaration. Der Messbefund ist eine Untergrenze, kein Vollbild."),
         ("3  Zeigen", "Daraus entsteht automatisch die öffentliche Datenfluss-Karte – eine "
                       "lesbare Seite, auf die man Kundschaft und Behörden verweisen kann."),
     ]
@@ -156,10 +157,10 @@ def erstelle(ziel: Path):
     text(c, x2, y, "WAS ES BRINGT", "PlexMono-SB", 8.5, TINTE, ls=1.2)
     yr = y - 18
     nutzen = [
-        ("KMU", "Datenschutz-Fragebögen von Grosskunden einmal beantworten statt zwanzigmal – "
-                "und Vertrauen sichtbar machen, bevor die Konkurrenz es tut."),
-        ("Treuhänder", "DSG-Beratung wird zum wiederholbaren Prozess: eine Stunde pro Mandant, "
-                       "Werkzeuge erledigen Dokumentation und Aktualität."),
+        ("KMU", "Angaben zu Datenflüssen einmal strukturiert pflegen statt in jedem "
+                "Kundenfragebogen neu zusammensuchen – und öffentlich belegbar machen."),
+        ("Treuhänder", "DSG-Beratung wird zum wiederholbaren Prozess mit einheitlichem "
+                       "Format; Werkzeuge übernehmen Dokumentation und Aktualitätsprüfung."),
         ("Kundschaft", "Ein Blick statt AGB-Wüste: wohin Daten fliessen und wie man Auskunft "
                        "verlangt – der Knopf dafür ist eingebaut."),
     ]
@@ -182,9 +183,9 @@ def erstelle(ziel: Path):
             tx += pfeil(c, tx, y + 1) + 6
     y -= 16
     y = absatz(c, RAND, y,
-               "Kein Gütesiegel: Das Register bewertet nicht, es macht sichtbar. Ehrlichkeit "
-               "erzwingt die Öffentlichkeit selbst – eine falsche öffentliche Deklaration ist "
-               "lauterkeitsrechtlich angreifbar.",
+               "Kein Gütesiegel: Das Register bewertet nicht, es macht sichtbar. Die "
+               "Disziplin kommt aus der Öffentlichkeit – unrichtige öffentliche Angaben "
+               "können rechtliche Folgen haben; die Beurteilung hängt vom Einzelfall ab.",
                B - 2 * RAND, size=9.3, farbe=GRAU, zeile=12.5)
 
     # Status-Box

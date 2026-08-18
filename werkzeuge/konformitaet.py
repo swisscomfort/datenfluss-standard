@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
@@ -30,7 +31,15 @@ FAELLE = REPO / "spec" / "v0.1" / "konformitaet"
 SCHEMA = REPO / "spec" / "v0.1" / "datenfluss.schema.json"
 
 sys.path.insert(0, str(HIER))
-from validator import Befund, PROFILE, lade_json, pruefe_schema, pruefe_semantik_universell  # noqa: E402
+from validator import (Befund, PROFILE, lade_json, pruefe_aktualitaet,  # noqa: E402
+                       pruefe_schema, pruefe_semantik_universell)
+
+# Fester Stichtag fuer die Testsuite. Ohne ihn haengt das Ergebnis der
+# Konformitaetspruefung an der Systemuhr -- genau der Fehler, den die
+# Trennung von Standard- und Zeitbefund beseitigt.
+# Nach dem Stand-Datum der Testdateien (2026-01-15) und innerhalb der
+# 18-Monats-Frist, damit weder 'in der Zukunft' noch 'veraltet' anschlaegt.
+STICHTAG = date(2026, 3, 1)
 
 
 def pruefe(deklaration: dict, schema: dict, profil: str = "ch") -> Befund:
@@ -39,6 +48,7 @@ def pruefe(deklaration: dict, schema: dict, profil: str = "ch") -> Befund:
     pruefe_schema(deklaration, schema, befund)
     if not befund.fehler:
         pruefe_semantik_universell(deklaration, befund)
+        pruefe_aktualitaet(deklaration, befund, heute=STICHTAG)
         PROFILE[profil][1](deklaration, befund)
     return befund
 
