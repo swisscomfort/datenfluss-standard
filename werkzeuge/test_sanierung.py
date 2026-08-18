@@ -165,6 +165,43 @@ for status in ("nicht_erreichbar", "nicht_abrufbar", "kein_gueltiges_json",
            f"Status {status} wird faelschlich als 'keine Deklaration' ausgegeben")
 
 
+# ---------------------------------------------------------------------------
+# 6. SSRF: Scanner rief jedes Ziel ab, auch interne Adressen
+#    Ein Werkzeug, das fuer Fremde Abrufe ausfuehrt und das Ergebnis
+#    veroeffentlicht, ist ohne Zielpruefung ein Bote in fremde Netze.
+# ---------------------------------------------------------------------------
+import netzschutz  # noqa: E402
+
+VERBOTEN = [
+    "http://169.254.169.254/latest/meta-data/",   # Cloud-Metadaten
+    "http://[fd00:ec2::254]/",                    # Cloud-Metadaten IPv6
+    "http://127.0.0.1:8737/api/vorschlaege",      # lokaler Dienst
+    "http://localhost/",
+    "http://10.0.0.5/", "http://192.168.1.1/", "http://172.16.0.1/",
+    "http://[::1]/", "http://0.0.0.0/",
+    "http://100.64.0.1/",                         # Carrier-NAT
+    "file:///etc/passwd", "gopher://x/", "ftp://x/",
+]
+for ziel in VERBOTEN:
+    pruefe(not netzschutz.ziel_erlaubt(ziel), f"SSRF: internes Ziel erlaubt: {ziel}")
+
+pruefe(netzschutz.ziel_erlaubt("https://example.com/"),
+       "SSRF-Schutz blockiert ein oeffentliches Ziel")
+
+# Weiterleitungen muessen erneut geprueft werden -- der uebliche Umweg.
+pruefe(hasattr(scanner, "_GeprueftUmleiten"), "Scanner prueft Weiterleitungsziele nicht")
+pruefe(hasattr(scanner._GeprueftUmleiten, "redirect_request"),
+       "Weiterleitungspruefung greift nicht in redirect_request ein")
+
+# Die Verweigerung muss als eigener Zustand erscheinen, nicht als Absturz
+# und nicht als gewoehnlicher Messfehler.
+verweigert = scanner.zusammenfassung({
+    "url": "http://127.0.0.1/", "status": "abgelehnt_kein_oeffentliches_ziel",
+    "fehler": "Loopback-Adresse"})
+pruefe("abgelehnt_kein_oeffentliches_ziel" in verweigert,
+       "Verweigertes Ziel wird in der Zusammenfassung nicht benannt")
+
+
 def main() -> int:
     if FEHLER:
         print(f"FEHLGESCHLAGEN ({len(FEHLER)}):")

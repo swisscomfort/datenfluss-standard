@@ -35,7 +35,10 @@ from pathlib import Path
 from urllib import robotparser
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from netzschutz import ZielAbgelehnt, pruefe_ziel  # noqa: E402
 
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
 TIMEOUT = 12
@@ -145,14 +148,38 @@ BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
 
+class _GeprueftUmleiten(HTTPRedirectHandler):
+    """Prueft jedes Weiterleitungsziel erneut.
+
+    Die Umleitung auf eine interne Adresse ist der Standardumweg um eine
+    Eingangspruefung: Der geprueffte Name antwortet mit 302 nach
+    http://169.254.169.254/ -- und ohne diese Klasse folgt urllib brav.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        pruefe_ziel(newurl)  # wirft ZielAbgelehnt
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OEFFNER = build_opener(_GeprueftUmleiten)
+
+
 def hole(url: str, ua: str = USER_AGENT):
+    """Ruft eine URL ab -- nur, wenn sie auf eine oeffentliche Adresse zeigt.
+
+    Der Scanner arbeitet Ziele ab, die von aussen kommen (Domainliste,
+    Selbstbedienungs-Vorschlag). Ohne diese Pruefung liesse er sich als Bote
+    fuer Abrufe in interne Netze verwenden, deren Ergebnis danach in einem
+    oeffentlichen Profil steht.
+    """
+    pruefe_ziel(url)
     req = Request(url, headers={
         "User-Agent": ua,
         "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "de-CH,de;q=0.9",
         "Accept-Encoding": "identity",
     })
-    with urlopen(req, timeout=TIMEOUT) as antwort:
+    with _OEFFNER.open(req, timeout=TIMEOUT) as antwort:
         roh = antwort.read(2_000_000)  # 2 MB reichen fuer eine Startseite
         text = roh.decode("utf-8", errors="replace")
         return antwort.geturl(), antwort.status, dict(antwort.headers), text
@@ -301,6 +328,12 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
                 raise
             else:
                 raise
+    except ZielAbgelehnt as exc:
+        # Kein Messfehler, sondern eine bewusste Verweigerung: das Ziel zeigt
+        # nicht ins oeffentliche Netz. Als solche benannt, nicht als Panne.
+        profil["status"] = "abgelehnt_kein_oeffentliches_ziel"
+        profil["fehler"] = str(exc)
+        return profil
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
         profil["status"] = "fehler"
         profil["fehler"] = str(exc)
@@ -423,7 +456,8 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
 
 def zusammenfassung(p: dict) -> str:
     z = [f"\n=== {p.get('finale_url', p['url'])} ==="]
-    if p.get("status") in ("fehler", "uebersprungen_robots_txt"):
+    if p.get("status") in ("fehler", "uebersprungen_robots_txt",
+                           "abgelehnt_kein_oeffentliches_ziel"):
         z.append(f"  Status: {p['status']} {p.get('fehler', '')}")
         return "\n".join(z)
     if p.get("abruf_hinweis"):

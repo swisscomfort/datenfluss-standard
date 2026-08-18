@@ -47,10 +47,14 @@ import argparse
 import json
 import re
 import sys
+from pathlib import Path
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from netzschutz import ZielAbgelehnt, pruefe_ziel  # noqa: E402
 
 TIMEOUT = 20
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
@@ -74,6 +78,8 @@ STATUS_DEUTUNG = {
 
 
 def hole(url: str) -> bytes:
+    """Abruf nur auf oeffentliche Ziele -- siehe netzschutz.pruefe_ziel()."""
+    pruefe_ziel(url)
     req = Request(url, headers={"user-agent": USER_AGENT, "accept": "*/*"})
     with urlopen(req, timeout=TIMEOUT) as r:
         return r.read()
@@ -138,6 +144,10 @@ def messe(url: str, mit_namen: bool = False) -> dict:
     }
     try:
         html = hole(url).decode("utf-8", "replace")
+    except ZielAbgelehnt as exc:
+        ergebnis["status"] = "abgelehnt_kein_oeffentliches_ziel"
+        ergebnis["fehler"] = str(exc)
+        return ergebnis
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
         ergebnis["status"] = "fehler"
         ergebnis["fehler"] = f"{type(exc).__name__}: {exc}"
