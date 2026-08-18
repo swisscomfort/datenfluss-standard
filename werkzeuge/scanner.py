@@ -68,6 +68,11 @@ TRACKER_DB: dict[str, tuple[str, str, str]] = {
     "usercentrics.eu": ("Usercentrics", "consent", "DE"),
     "cookiebot.com": ("Cookiebot", "consent", "DK"),
     "onetrust.com": ("OneTrust", "consent", "US"),
+    # OneTrust liefert ueber cookielaw.org aus; ohne diesen Eintrag taucht die
+    # verbreitetste Einwilligungsplattform als "unbekannter Host" auf.
+    "cookielaw.org": ("OneTrust", "consent", "US"),
+    "onetrust.io": ("OneTrust", "consent", "US"),
+    "fundingchoicesmessages.google.com": ("Google Funding Choices", "consent", "US"),
     "js.stripe.com": ("Stripe", "zahlung", "US/IE"),
     "paypal.com": ("PayPal", "zahlung", "US"),
     "klarna.com": ("Klarna", "zahlung", "SE"),
