@@ -6,7 +6,17 @@ Warum diese Ebene:
   eine Untergrenze. Das DNS beantwortet dagegen Fragen, die im HTML gar nicht
   vorkommen: Wohin geht die Post der Organisation? Wer darf in ihrem Namen
   senden? Sieht eine Subdomain nur wie ein eigener Dienst aus, zeigt aber auf
-  einen fremden? Das sind Bekanntgaben an Dritte im Sinne der Deklaration.
+  einen fremden?
+
+Was diese Befunde sind - und was nicht:
+  Sie sind **Infrastruktur-Hinweise**, keine nachgewiesenen Personendatenfluesse.
+  Ein MX-Eintrag belegt, wer Post *annimmt*, nicht dass dort gerade Daten
+  liegen. Ein SPF-Include belegt eine Sendeberechtigung, nicht eine laufende
+  Bearbeitung. Ein CNAME belegt eine Infrastrukturbeziehung, nicht deren
+  Inhalt. Wer daraus eine "Bekanntgabe an Dritte im Sinne des DSG" macht,
+  zieht einen Schluss, den die Messung nicht traegt. Diese Befunde taugen als
+  **Anlass zur Nachfrage** und zum Abgleich mit einer Deklaration - nicht als
+  Feststellung.
 
 Warum sie fair ist:
   Es wird keine einzige Anfrage an die Server der gemessenen Organisation
