@@ -23,6 +23,7 @@ Plattformen, Browser-Erweiterungen, Treuhänder-Software und Register können di
 | `beispiele/datenfluss-karte.html` | Gerenderte Beispiel-Karte der Alpenkafi GmbH (im Browser öffnen) |
 | `werkzeuge/scanner.py` | Scanner-Prototyp: vermisst statisch eingebundene Drittanbieter einer Website und vergleicht mit deren Deklaration (gemessen ↔ deklariert) |
 | `werkzeuge/dns_messung.py` | Misst die im DNS **selbst veröffentlichten** Datenflüsse: Post-Empfänger (MX), Sendeberechtigte (SPF), First-Party-Tarnung (CNAME) – ohne eine einzige Anfrage an die Server der gemessenen Stelle |
+| `werkzeuge/einwilligung.py` | Liest den **Einwilligungsumfang** aus der veröffentlichten CMP-Konfiguration: wie viele Partner einwilligungsfähig geschaltet sind und wie die Kategorien je Länder-Regelsatz vorbelegt sind – ohne JavaScript, ohne Klick |
 | `werkzeuge/konformitaet.py` | Konformitäts-Testsuite: prüft eine Implementierung gegen die verbindlichen Testfälle |
 | `spec/v0.1/konformitaet/` | Die Testfälle selbst (10 Deklarationen) samt `erwartungen.json` – die Referenz, an der sich jede Umsetzung messen lassen muss |
 | `profile/profil-www.digitale-gesellschaft.ch.json` | Echtes Beispiel eines gemessenen Profils |
@@ -51,6 +52,14 @@ python3 werkzeuge/dns_messung.py landi.ch migros.ch   # oder --json
 Die DNS-Messung beantwortet Fragen, die im HTML gar nicht vorkommen: **Wohin geht die Post der Organisation?** (MX) · **Wer darf in ihrem Namen senden?** (SPF-Includes – verrät Newsletter-, CRM- und Bewerbungssysteme, die auf der Website nirgends auftauchen) · **Sieht eine Subdomain nur wie ein eigener Dienst aus?** (CNAME-Tarnung, etwa `metrics.firma.ch → adobedc.net`).
 
 Sie stellt dabei **keine einzige Anfrage an die Server der gemessenen Organisation** – gelesen wird ausschliesslich, was diese selbst im DNS veröffentlicht hat, damit die Welt es liest. Die Messung erzeugt keine Last und lässt sich nicht abweisen; genau deshalb bleibt der Befund sachlich und ohne Wertung. Ihre Grenzen stehen im Ergebnis: MX sagt, wer Post *annimmt*, nicht wo sie danach liegt; SPF sagt, wer senden *darf*, nicht wer sendet; die Subdomain-Prüfung ist eine Stichprobe; die Zuordnung Anbieter → Land ist ein Hinweis auf den Konzernsitz, keine Aussage über den Speicherort. Aufgelöst wird über einen fremden DNS-over-HTTPS-Dienst – das ist selbst ein Datenfluss und wird im Ergebnis benannt. Unbekannte Ziele werden als unbekannt ausgewiesen und nie geraten.
+
+```bash
+python3 werkzeuge/einwilligung.py --namen https://www.beispiel.ch
+```
+
+Der Einwilligungs-Leser beantwortet die Gegenfrage zum Scanner. Der Scan misst eine **Untergrenze** (was ohne Zustimmung statisch eingebunden ist); die Einwilligungsplattform veröffentlicht ihre Konfiguration als gewöhnliche JSON-Datei und verrät damit die **Obergrenze**: wie viele Partner überhaupt eine Einwilligung erhalten können, wie sie heissen, und – das ist der eigentliche Fund – **wie die Kategorien je Länder-Regelsatz vorbelegt sind**. Gelesen wird ohne JavaScript, ohne Klick und ohne eine einzige Übertragung an Werbepartner auszulösen.
+
+Beide Zahlen sind Randwerte und werden auch so ausgewiesen: Untergrenze und Obergrenze, nie eine Messung des realen Einzelfalls. Erkannt wird heute nur OneTrust; findet das Werkzeug keine Kennung, meldet es das ausdrücklich als Nichtwissen und nicht als «keine Plattform vorhanden». Die Deutung des Feldes `Status` (`active` / `inactive`) ist aus den Daten erschlossen und wird immer zusammen mit dem Rohwert ausgegeben – sie muss gegen die Herstellerdokumentation bestätigt werden, bevor daraus eine öffentliche Aussage wird.
 
 Für Register, die auf diesem Standard aufbauen, gilt dabei eine verbindliche Regel: **Als deklariert zählt eine Website nur, wenn ihre Datei die Standardprüfung besteht.** Eine gefundene, aber nicht konforme Datei wird als solche ausgewiesen – mit den konkreten Befunden als Wegbeschreibung, nicht als Pranger. Ohne diese Regel entschiede ein gelungener JSON-Parse statt des Standards darüber, wer die Marke trägt, und die mittlere Vertrauensstufe wäre wertlos.
 
