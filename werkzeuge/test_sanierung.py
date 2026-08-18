@@ -189,8 +189,8 @@ pruefe(netzschutz.ziel_erlaubt("https://example.com/"),
        "SSRF-Schutz blockiert ein oeffentliches Ziel")
 
 # Weiterleitungen muessen erneut geprueft werden -- der uebliche Umweg.
-pruefe(hasattr(scanner, "_GeprueftUmleiten"), "Scanner prueft Weiterleitungsziele nicht")
-pruefe(hasattr(scanner._GeprueftUmleiten, "redirect_request"),
+pruefe(hasattr(netzschutz, "GeprueftUmleiten"), "Weiterleitungspruefung fehlt")
+pruefe(hasattr(netzschutz.GeprueftUmleiten, "redirect_request"),
        "Weiterleitungspruefung greift nicht in redirect_request ein")
 
 # Die Verweigerung muss als eigener Zustand erscheinen, nicht als Absturz
@@ -200,6 +200,82 @@ verweigert = scanner.zusammenfassung({
     "fehler": "Loopback-Adresse"})
 pruefe("abgelehnt_kein_oeffentliches_ziel" in verweigert,
        "Verweigertes Ziel wird in der Zusammenfassung nicht benannt")
+
+
+# ---------------------------------------------------------------------------
+# 7. Zweite Gegenpruefung: SSRF ueber Weiterleitung im Einwilligungs-Leser
+#    pruefe_ziel() sicherte nur die Eingangs-URL; urlopen() folgt Umleitungen
+#    selbsttaetig. Beide Werkzeuge muessen dieselbe geprueffte Schicht nutzen.
+# ---------------------------------------------------------------------------
+import einwilligung  # noqa: E402
+
+quelltext = (HIER / "einwilligung.py").read_text()
+pruefe("oeffne(" in quelltext, "Einwilligungs-Leser nutzt die geprueffte Abrufschicht nicht")
+pruefe("urlopen(req" not in quelltext,
+       "Einwilligungs-Leser ruft weiterhin ungeprueft mit urlopen ab")
+pruefe(hasattr(netzschutz, "GeprueftUmleiten") and hasattr(netzschutz, "oeffne"),
+       "Gemeinsame redirect-sichere Abrufschicht fehlt")
+scanner_text = (HIER / "scanner.py").read_text()
+pruefe("class _GeprueftUmleiten" not in scanner_text,
+       "Scanner haelt eine zweite Kopie der Umleitungspruefung -- eine Quelle genuegt")
+pruefe("oeffne(req" in scanner_text, "Scanner nutzt die gemeinsame Abrufschicht nicht")
+
+# ---------------------------------------------------------------------------
+# 8. DNS-Antwortcode wurde nicht ausgewertet
+#    SERVFAIL/REFUSED lieferten eine leere Antwortliste -- und daraus wurde
+#    "kein MX-Eintrag gefunden". Nichtwissen als Abwesenheit, erneut.
+# ---------------------------------------------------------------------------
+import dns_messung  # noqa: E402
+
+pruefe(hasattr(dns_messung, "RCODE_NAMEN"), "DNS-Antwortcodes sind nicht benannt")
+pruefe(dns_messung.RCODE_NAMEN.get(2) == "SERVFAIL", "SERVFAIL nicht bekannt")
+pruefe(dns_messung.RCODE_NAMEN.get(5) == "REFUSED", "REFUSED nicht bekannt")
+pruefe(dns_messung.RCODE_KEIN_FEHLER == 0 and dns_messung.RCODE_NAME_EXISTIERT_NICHT == 3,
+       "Gueltige Antwortcodes falsch definiert")
+a = dns_messung.Aufloeser()
+pruefe(hasattr(a, "ungeklaert"), "Aufloeser fuehrt keine ungeklaerten Fragen")
+
+zusammen = dns_messung.zusammenfassung({
+    "domain": "x.ch", "post_empfaenger": [],
+    "sendeberechtigte": {"vorhanden": False, "dienste": [], "unbekannte_includes": []},
+    "erste_partei_tarnung": [], "laender_hinweise": [],
+    "ungeklaerte_fragen": [{"name": "x.ch", "typ": "MX", "grund": "SERVFAIL"}]})
+pruefe("UNGEKLAERT" in zusammen, "Ungeklaerte DNS-Frage wird nicht als solche gemeldet")
+pruefe("kein MX-Eintrag gefunden" not in zusammen,
+       "SERVFAIL erscheint weiterhin als 'kein Eintrag gefunden'")
+
+leer = dns_messung.zusammenfassung({
+    "domain": "x.ch", "post_empfaenger": [],
+    "sendeberechtigte": {"vorhanden": False, "dienste": [], "unbekannte_includes": []},
+    "erste_partei_tarnung": [], "laender_hinweise": []})
+pruefe("kein MX-Eintrag vorhanden" in leer,
+       "Echte Abwesenheit wird nicht mehr als Abwesenheit benannt")
+
+# SPF-Umfang darf nicht mehr behaupten, er kenne die Sendeberechtigung.
+pruefe("wer darf in ihrem Namen senden" not in dns_messung.sendeberechtigte.__doc__.lower()
+       or "nicht" in dns_messung.sendeberechtigte.__doc__.lower(),
+       "SPF-Aussage weiterhin zu stark formuliert")
+
+# ---------------------------------------------------------------------------
+# 9. Schema und Renderer akzeptierten unterschiedliche Schreibweisen
+# ---------------------------------------------------------------------------
+for schreibweise in ("HTTPS://OK.EXAMPLE/F", "HtTpS://x.ch", "https://ok.example/f"):
+    vom_schema = not list(sv.iter_errors(schreibweise))
+    vom_renderer = renderer.sichere_url(schreibweise) is not None
+    pruefe(vom_schema == vom_renderer,
+           f"Schema und Renderer sind uneinig ueber {schreibweise!r}: "
+           f"Schema={vom_schema}, Renderer={vom_renderer}")
+
+# ---------------------------------------------------------------------------
+# 10. Aktualitaetsbefund war beim Herausloesen der Uhrzeit still verschwunden
+# ---------------------------------------------------------------------------
+pruefe(hasattr(scanner, "_aktualitaet_pruefen"),
+       "Scanner ermittelt keinen Aktualitaetsbefund mehr")
+befunde_akt = scanner._aktualitaet_pruefen(zukunft)
+pruefe(any("Zukunft" in b for b in befunde_akt),
+       "Zukunftsdatum taucht im Profil nicht mehr auf")
+pruefe(scanner._deklaration_pruefen(zukunft)[0] == "konform",
+       "Aktualitaet kippt faelschlich die Konformitaet")
 
 
 def main() -> int:

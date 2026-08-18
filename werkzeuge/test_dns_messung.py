@@ -119,7 +119,10 @@ leer = {
 }
 try:
     text = dm.zusammenfassung(leer)
-    pruefe("kein MX-Eintrag gefunden" in text, "Zusammenfassung: leerer Befund wird benannt")
+    pruefe("kein MX-Eintrag vorhanden" in text,
+           "Zusammenfassung: echte Abwesenheit wird nicht als solche benannt")
+    pruefe("UNGEKLAERT" not in text,
+           "Echte Abwesenheit wird faelschlich als ungeklaert ausgegeben")
 except Exception as exc:  # pragma: no cover - soll nie eintreten
     FEHLER.append(f"Zusammenfassung wirft bei leerem Befund: {exc!r}")
 

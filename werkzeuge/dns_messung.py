@@ -53,6 +53,18 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 TIMEOUT = 12
+
+# DNS-Antwortcodes (RFC 1035). Nur diese beiden sind eine gueltige Antwort auf
+# die Frage "gibt es diesen Eintrag": kein Fehler (ggf. mit leerer Antwort =
+# Eintrag existiert nicht) und Name existiert nicht. Alles andere heisst
+# "nicht beantwortet" und darf nie als "kein Eintrag" erscheinen.
+RCODE_KEIN_FEHLER = 0
+RCODE_NAME_EXISTIERT_NICHT = 3
+RCODE_NAMEN = {
+    0: "NOERROR", 1: "FORMERR", 2: "SERVFAIL", 3: "NXDOMAIN",
+    4: "NOTIMP", 5: "REFUSED", 9: "NOTAUTH", 10: "NOTZONE",
+}
+
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
 
 # Aufloeser. Der erste, der antwortet, wird verwendet; welcher es war, steht im
@@ -194,6 +206,7 @@ class Aufloeser:
         self.dienst = dienst
         self.basis = AUFLOESER[dienst]
         self.speicher: dict[tuple[str, str], list[str]] = {}
+        self.ungeklaert: dict[tuple[str, str], str] = {}
         self.fehler: list[str] = []
 
     def frage(self, name: str, typ: str) -> list[str]:
@@ -207,15 +220,33 @@ class Aufloeser:
         try:
             with urlopen(req, timeout=TIMEOUT) as r:
                 daten = json.loads(r.read().decode("utf-8", "replace"))
-            # Status 0 = kein Fehler, 3 = Name existiert nicht (beides normal).
-            for a in daten.get("Answer") or []:
-                wert = a.get("data")
-                if wert:
-                    antworten.append(wert)
         except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
+            self.ungeklaert[schluessel] = f"{type(exc).__name__}"
             self.fehler.append(f"{typ} {name}: {type(exc).__name__}")
+            self.speicher[schluessel] = []
+            return []
+
+        # Den DNS-Antwortcode auswerten, nicht nur die Antwortliste. Sonst
+        # sieht ein SERVFAIL genauso aus wie "es gibt keinen Eintrag" -- und
+        # aus Nichtwissen wuerde eine Abwesenheitsbehauptung. Genau diesen
+        # Fehler behebt der Scanner an anderer Stelle bereits.
+        code = daten.get("Status")
+        if code not in (RCODE_KEIN_FEHLER, RCODE_NAME_EXISTIERT_NICHT):
+            self.ungeklaert[schluessel] = RCODE_NAMEN.get(code, f"RCODE {code}")
+            self.fehler.append(f"{typ} {name}: {RCODE_NAMEN.get(code, f'RCODE {code}')}")
+            self.speicher[schluessel] = []
+            return []
+
+        for a in daten.get("Answer") or []:
+            wert = a.get("data")
+            if wert:
+                antworten.append(wert)
         self.speicher[schluessel] = antworten
         return antworten
+
+    def ist_ungeklaert(self, name: str, typ: str) -> str | None:
+        """Grund, falls diese Frage nicht beantwortet werden konnte."""
+        return self.ungeklaert.get((name.lower(), typ.upper()))
 
 
 def post_empfaenger(aufl: Aufloeser, domain: str) -> list[dict]:
@@ -237,8 +268,14 @@ def post_empfaenger(aufl: Aufloeser, domain: str) -> list[dict]:
 
 
 def sendeberechtigte(aufl: Aufloeser, domain: str) -> dict:
-    """SPF: wer darf in ihrem Namen senden? Verrät oft Newsletter- und
-    CRM-Dienste, die auf der Website nirgends auftauchen."""
+    """Direkte SPF-Includes: Hinweise auf delegierte Sendeinfrastruktur.
+
+    **Umfang, bewusst begrenzt:** Ausgewertet werden ausschliesslich die
+    direkten `include:`-Mechanismen. SPF kennt daneben `ip4`, `ip6`, `a`,
+    `mx` und `redirect`, und Includes koennen ihrerseits weitere Regeln
+    enthalten. Die Aussage lautet deshalb nicht «wer darf in ihrem Namen
+    senden», sondern «welche Sendeinfrastruktur ist direkt eingebunden».
+    """
     roh = [t.strip('"') for t in aufl.frage(domain, "TXT")]
     spf = next((t for t in roh if t.lower().startswith("v=spf1")), None)
     if not spf:
@@ -256,6 +293,8 @@ def sendeberechtigte(aufl: Aufloeser, domain: str) -> dict:
         else:
             unbekannt.append(ziel)
     return {"vorhanden": True,
+            "umfang": ("nur direkte include:-Mechanismen; ip4/ip6/a/mx/redirect "
+                       "und verschachtelte Includes werden nicht ausgewertet"),
             "eintrag": spf,
             "dienste": [{**d, "includes": sorted(d["includes"])}
                         for d in sorted(dienste.values(), key=lambda d: d["anbieter"])],
@@ -308,6 +347,12 @@ def messe(domain: str, dienst: str = "cloudflare",
     }
     if aufl.fehler:
         ergebnis["abruf_hinweise"] = aufl.fehler
+    if aufl.ungeklaert:
+        # Fragen, die der Aufloeser nicht beantworten konnte. Bewusst getrennt
+        # von "kein Eintrag vorhanden": Nichtwissen ist keine Abwesenheit.
+        ergebnis["ungeklaerte_fragen"] = [
+            {"name": n, "typ": t, "grund": g}
+            for (n, t), g in sorted(aufl.ungeklaert.items())]
     ergebnis["laender_hinweise"] = sorted({
         *(e["sitz_hinweis"] for e in ergebnis["post_empfaenger"]),
         *(d["sitz_hinweis"] for d in ergebnis["sendeberechtigte"]["dienste"]),
@@ -323,11 +368,14 @@ def zusammenfassung(m: dict) -> str:
         for e in post:
             zeilen.append(f"  Post laeuft ueber: {e['anbieter']} ({e['sitz_hinweis']})")
     else:
-        zeilen.append("  Post laeuft ueber: kein MX-Eintrag gefunden")
+        offen = [u for u in m.get("ungeklaerte_fragen", []) if u["typ"] == "MX"]
+        zeilen.append("  Post laeuft ueber: UNGEKLAERT – DNS-Frage nicht beantwortet "
+                      f"({offen[0]['grund']})" if offen
+                      else "  Post laeuft ueber: kein MX-Eintrag vorhanden")
     spf = m["sendeberechtigte"]
     if spf["dienste"]:
         namen = ", ".join(f"{d['anbieter']} ({d['sitz_hinweis']})" for d in spf["dienste"])
-        zeilen.append(f"  Darf in ihrem Namen senden: {namen}")
+        zeilen.append(f"  Direkt eingebundene Sendeinfrastruktur: {namen}")
     if spf.get("unbekannte_includes"):
         zeilen.append(f"  Weitere Sende-Includes (nicht zugeordnet): "
                       f"{', '.join(spf['unbekannte_includes'])}")
@@ -338,6 +386,9 @@ def zusammenfassung(m: dict) -> str:
                           f"({t['sitz_hinweis']}, {t['kategorie']}) – {t['zeigt_auf']}")
     else:
         zeilen.append("  Keine der geprueften Subdomains zeigt auf einen Dritten")
+    for u in m.get("ungeklaerte_fragen", []):
+        zeilen.append(f"  UNGEKLAERT: {u['typ']} fuer {u['name']} – {u['grund']}. "
+                      f"Kein Nachweis, dass kein Eintrag existiert.")
     if m["laender_hinweise"]:
         zeilen.append(f"  Sitz-Hinweise insgesamt: {', '.join(m['laender_hinweise'])}")
     return "\n".join(zeilen)

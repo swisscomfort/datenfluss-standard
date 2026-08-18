@@ -54,7 +54,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from netzschutz import ZielAbgelehnt, pruefe_ziel  # noqa: E402
+from netzschutz import ZielAbgelehnt, oeffne  # noqa: E402
 
 TIMEOUT = 20
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
@@ -78,10 +78,15 @@ STATUS_DEUTUNG = {
 
 
 def hole(url: str) -> bytes:
-    """Abruf nur auf oeffentliche Ziele -- siehe netzschutz.pruefe_ziel()."""
-    pruefe_ziel(url)
+    """Abruf nur auf oeffentliche Ziele -- auch nach Weiterleitungen.
+
+    Frueher stand hier `pruefe_ziel(url)` plus ein gewoehnliches `urlopen()`.
+    Das war lueckenhaft: urlopen folgt Weiterleitungen selbsttaetig, und die
+    Umleitung auf eine interne Adresse war damit weiterhin moeglich. Der
+    gemeinsame Oeffner aus netzschutz prueft jedes Ziel der Kette.
+    """
     req = Request(url, headers={"user-agent": USER_AGENT, "accept": "*/*"})
-    with urlopen(req, timeout=TIMEOUT) as r:
+    with oeffne(req, TIMEOUT) as r:
         return r.read()
 
 

@@ -38,7 +38,7 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from netzschutz import ZielAbgelehnt, pruefe_ziel  # noqa: E402
+from netzschutz import GeprueftUmleiten, ZielAbgelehnt, oeffne, pruefe_ziel  # noqa: E402
 
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
 TIMEOUT = 12
@@ -148,22 +148,6 @@ BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
 
-class _GeprueftUmleiten(HTTPRedirectHandler):
-    """Prueft jedes Weiterleitungsziel erneut.
-
-    Die Umleitung auf eine interne Adresse ist der Standardumweg um eine
-    Eingangspruefung: Der geprueffte Name antwortet mit 302 nach
-    http://169.254.169.254/ -- und ohne diese Klasse folgt urllib brav.
-    """
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        pruefe_ziel(newurl)  # wirft ZielAbgelehnt
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
-
-
-_OEFFNER = build_opener(_GeprueftUmleiten)
-
-
 def hole(url: str, ua: str = USER_AGENT):
     """Ruft eine URL ab -- nur, wenn sie auf eine oeffentliche Adresse zeigt.
 
@@ -172,14 +156,13 @@ def hole(url: str, ua: str = USER_AGENT):
     fuer Abrufe in interne Netze verwenden, deren Ergebnis danach in einem
     oeffentlichen Profil steht.
     """
-    pruefe_ziel(url)
     req = Request(url, headers={
         "User-Agent": ua,
         "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "de-CH,de;q=0.9",
         "Accept-Encoding": "identity",
     })
-    with _OEFFNER.open(req, timeout=TIMEOUT) as antwort:
+    with oeffne(req, TIMEOUT) as antwort:
         roh = antwort.read(2_000_000)  # 2 MB reichen fuer eine Startseite
         text = roh.decode("utf-8", errors="replace")
         return antwort.geturl(), antwort.status, dict(antwort.headers), text
@@ -243,6 +226,24 @@ def _git_commit() -> str | None:
         ).stdout.strip() or None
     except Exception:
         return None
+
+
+def _aktualitaet_pruefen(dekl: dict) -> list[str]:
+    """Zeitabhaengiges Urteil ueber die Deklaration -- getrennt von Konformitaet.
+
+    Beim Herausloesen der Uhrzeit aus der Standardkonformitaet waren diese
+    Befunde zunaechst still aus den Profilen verschwunden. Das ist der falsche
+    Schluss aus der richtigen Trennung: Eine veraltete Deklaration bleibt
+    standardkonform -- aber ein Register, das ihr Alter verschweigt, verliert
+    genau die Aussage, fuer die es existiert.
+    """
+    try:
+        from validator import Befund, pruefe_aktualitaet
+    except ImportError:
+        return []
+    befund = Befund()
+    pruefe_aktualitaet(dekl, befund)
+    return befund.profil_fehler + befund.profil_warnungen
 
 
 def _deklaration_pruefen(dekl: dict) -> tuple[str, list[str]]:
@@ -401,6 +402,9 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
                 "befunde": [f"Datei ist kein gueltiges JSON-Objekt ({exc})"]}
             raise _DeklFertig
         status, befunde = _deklaration_pruefen(dekl)
+        aktualitaet = _aktualitaet_pruefen(dekl)
+        if aktualitaet:
+            dekl_info["aktualitaet"] = aktualitaet
         dekl_info = {"status": status, "vorhanden": True,
                      "spec_version": dekl.get("spec_version"),
                      "stand": dekl.get("stand"),
@@ -481,6 +485,8 @@ def zusammenfassung(p: dict) -> str:
         z.append(f"  Deklaration: KONFORM (Stand {d.get('stand')}, {d.get('organisation')})")
         fehlt = d.get("gemessen_aber_nicht_deklariert", [])
         z.append("  Abweichung gemessen↔deklariert: " + (", ".join(fehlt) if fehlt else "keine"))
+        for a in d.get("aktualitaet", []):
+            z.append(f"    Aktualitaet: {a}")
     elif status == "nicht_vorhanden":
         z.append("  Deklaration: keine /.well-known/datenfluss.json vorhanden (HTTP 404)")
     elif status in UNGEWISS:

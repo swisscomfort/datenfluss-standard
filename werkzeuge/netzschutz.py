@@ -30,6 +30,7 @@ from __future__ import annotations
 import ipaddress
 import socket
 from urllib.parse import urlparse
+from urllib.request import HTTPRedirectHandler, build_opener
 
 ERLAUBTE_SCHEMATA = ("http", "https")
 
@@ -121,3 +122,33 @@ def ziel_erlaubt(url: str) -> bool:
         return True
     except ZielAbgelehnt:
         return False
+
+
+class GeprueftUmleiten(HTTPRedirectHandler):
+    """Prueft jedes Weiterleitungsziel erneut.
+
+    Die Umleitung auf eine interne Adresse ist der Standardumweg um eine
+    Eingangspruefung: Der geprueffte Name antwortet mit 302 nach
+    http://169.254.169.254/ -- und ohne diese Klasse folgt urllib brav.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        pruefe_ziel(newurl)  # wirft ZielAbgelehnt
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+# Ein gemeinsamer Oeffner fuer alle Werkzeuge. Bewusst zentral: Jede Stelle,
+# die sich ihren eigenen Abruf baut, ist eine Stelle, an der die Pruefung
+# spaeter vergessen wird -- genau so entstand die Luecke im Einwilligungs-Leser.
+OEFFNER = build_opener(GeprueftUmleiten)
+
+
+def oeffne(req, timeout: float):
+    """Abruf mit Zielpruefung am Anfang und nach jeder Weiterleitung.
+
+    `req` ist ein urllib-Request oder eine URL. Wirft ZielAbgelehnt, bevor
+    ueberhaupt eine Verbindung aufgebaut wird.
+    """
+    ziel = req if isinstance(req, str) else req.full_url
+    pruefe_ziel(ziel)
+    return OEFFNER.open(req, timeout=timeout)

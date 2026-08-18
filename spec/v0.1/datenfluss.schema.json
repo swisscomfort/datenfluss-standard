@@ -54,7 +54,7 @@
         "website": {
           "type": "string",
           "format": "uri",
-          "pattern": "^https?://",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
           "description": "Nur http(s)-URLs: andere Schemata (z. B. javascript:) koennen in Renderern Code ausfuehrbar machen."
         },
         "adresse": {
@@ -149,7 +149,7 @@
         "formular_url": {
           "type": "string",
           "format": "uri",
-          "pattern": "^https?://",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
           "description": "Nur http(s)-URLs: andere Schemata (z. B. javascript:) koennen in Renderern Code ausfuehrbar machen."
         },
         "post_adresse": {
@@ -161,7 +161,7 @@
           "minimum": 1,
           "maximum": 30,
           "default": 30,
-          "description": "Zugesicherte Antwortfrist in Tagen (gesetzliches Maximum: 30)."
+          "description": "Von der Organisation angestrebte Antwortfrist in Tagen. Gesetzlich ist die Auskunft in der Regel innert 30 Tagen zu erteilen (Art. 25 f. DSG); ist das nicht moeglich, ist die betroffene Person zu informieren."
         },
         "hinweis": {
           "type": "string",
@@ -204,7 +204,7 @@
           "url": {
             "type": "string",
             "format": "uri",
-            "pattern": "^https?://",
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
             "description": "Nur http(s)-URLs: andere Schemata (z. B. javascript:) koennen in Renderern Code ausfuehrbar machen."
           }
         }
@@ -218,7 +218,7 @@
       "type": "string",
       "format": "uri",
       "description": "Optionaler Link auf ein ausfuehrlicheres Verzeichnis der Bearbeitungstaetigkeiten. Nur http(s)-URLs: andere Schemata (z. B. javascript:) koennen in Renderern Code ausfuehrbar machen.",
-      "pattern": "^https?://"
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
     },
     "stand": {
       "type": "string",
@@ -255,7 +255,7 @@
         "public_key_url": {
           "type": "string",
           "format": "uri",
-          "pattern": "^https?://",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
           "description": "Nur http(s)-URLs: andere Schemata (z. B. javascript:) koennen in Renderern Code ausfuehrbar machen."
         }
       }
@@ -455,7 +455,7 @@
         "website": {
           "type": "string",
           "format": "uri",
-          "pattern": "^https?://",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
           "description": "Nur http(s)-URLs: andere Schemata (z. B. javascript:) koennen in Renderern Code ausfuehrbar machen."
         }
       }
