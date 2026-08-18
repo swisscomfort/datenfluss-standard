@@ -22,6 +22,7 @@ Plattformen, Browser-Erweiterungen, Treuhänder-Software und Register können di
 | `werkzeuge/renderer.py` | Referenz-Renderer: erzeugt aus einer Deklaration die lesbare HTML-«Datenfluss-Karte» |
 | `beispiele/datenfluss-karte.html` | Gerenderte Beispiel-Karte der Alpenkafi GmbH (im Browser öffnen) |
 | `werkzeuge/scanner.py` | Scanner-Prototyp: vermisst statisch eingebundene Drittanbieter einer Website und vergleicht mit deren Deklaration (gemessen ↔ deklariert) |
+| `werkzeuge/dns_messung.py` | Misst die im DNS **selbst veröffentlichten** Datenflüsse: Post-Empfänger (MX), Sendeberechtigte (SPF), First-Party-Tarnung (CNAME) – ohne eine einzige Anfrage an die Server der gemessenen Stelle |
 | `werkzeuge/konformitaet.py` | Konformitäts-Testsuite: prüft eine Implementierung gegen die verbindlichen Testfälle |
 | `spec/v0.1/konformitaet/` | Die Testfälle selbst (10 Deklarationen) samt `erwartungen.json` – die Referenz, an der sich jede Umsetzung messen lassen muss |
 | `profile/profil-www.digitale-gesellschaft.ch.json` | Echtes Beispiel eines gemessenen Profils |
@@ -42,6 +43,14 @@ python3 werkzeuge/scanner.py https://www.beispielfirma.ch   # gemessenes Profil 
 ```
 
 Der Scanner respektiert robots.txt (RFC 9309) und identifiziert sich ehrlich als `DatenflussScanner/0.1`. Weist ein Server diese Kennung ab (HTTP 403/406), wird die Abweisung standardmässig respektiert und nicht erneut versucht – wer unsere ehrliche Kennung ablehnt, will nicht vermessen werden. Nur mit dem ausdrücklichen Schalter `--hartnaeckig` wird ein zweiter Versuch mit Browser-Kennung unternommen; er wird dann im Profil als `abruf_hinweis` dokumentiert. Er erkennt rund 45 bekannte Dienste inkl. selbst gehostetem Matomo und Inline-Signaturen (`gtag(`, `fbq(`, `GTM-`), prüft `/.well-known/datenfluss.json` und berechnet die Abweichung **gemessen ↔ deklariert**. Methodik-Grenze, im Profil dokumentiert: statische Analyse ohne JavaScript – dynamisch via Tag Manager nachgeladene Dienste sind unsichtbar, der Befund ist eine Untergrenze. Scheitert ein Abruf, speichert das Profil Roh-Evidenz (`abruf_beleg`: Fehlerklasse, HTTP-Status, ausgewählte Antwort-Header): Ein Messwerkzeug, das «nicht erreichbar» nur behauptet, statt es zu belegen, produziert unbestreitbare Befunde – und genau solche Befunde werden zu Recht bestritten.
+
+```bash
+python3 werkzeuge/dns_messung.py landi.ch migros.ch   # oder --json
+```
+
+Die DNS-Messung beantwortet Fragen, die im HTML gar nicht vorkommen: **Wohin geht die Post der Organisation?** (MX) · **Wer darf in ihrem Namen senden?** (SPF-Includes – verrät Newsletter-, CRM- und Bewerbungssysteme, die auf der Website nirgends auftauchen) · **Sieht eine Subdomain nur wie ein eigener Dienst aus?** (CNAME-Tarnung, etwa `metrics.firma.ch → adobedc.net`).
+
+Sie stellt dabei **keine einzige Anfrage an die Server der gemessenen Organisation** – gelesen wird ausschliesslich, was diese selbst im DNS veröffentlicht hat, damit die Welt es liest. Die Messung erzeugt keine Last und lässt sich nicht abweisen; genau deshalb bleibt der Befund sachlich und ohne Wertung. Ihre Grenzen stehen im Ergebnis: MX sagt, wer Post *annimmt*, nicht wo sie danach liegt; SPF sagt, wer senden *darf*, nicht wer sendet; die Subdomain-Prüfung ist eine Stichprobe; die Zuordnung Anbieter → Land ist ein Hinweis auf den Konzernsitz, keine Aussage über den Speicherort. Aufgelöst wird über einen fremden DNS-over-HTTPS-Dienst – das ist selbst ein Datenfluss und wird im Ergebnis benannt. Unbekannte Ziele werden als unbekannt ausgewiesen und nie geraten.
 
 Für Register, die auf diesem Standard aufbauen, gilt dabei eine verbindliche Regel: **Als deklariert zählt eine Website nur, wenn ihre Datei die Standardprüfung besteht.** Eine gefundene, aber nicht konforme Datei wird als solche ausgewiesen – mit den konkreten Befunden als Wegbeschreibung, nicht als Pranger. Ohne diese Regel entschiede ein gelungener JSON-Parse statt des Standards darüber, wer die Marke trägt, und die mittlere Vertrauensstufe wäre wertlos.
 

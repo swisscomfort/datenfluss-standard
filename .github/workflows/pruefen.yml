@@ -13,3 +13,5 @@ jobs:
         run: python3 werkzeuge/validator.py beispiele/beispiel-deklaration.json
       - name: Konformitaets-Testsuite
         run: python3 werkzeuge/konformitaet.py
+      - name: Selbsttest DNS-Messung (ohne Netzzugriff)
+        run: python3 werkzeuge/test_dns_messung.py
