@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import html
+from urllib.parse import urlparse
 import json
 import re
 import sys
@@ -71,6 +72,30 @@ KATEGORIEN = {
 
 def esc(wert: object) -> str:
     return html.escape(str(wert), quote=True)
+
+
+# Nur diese Schemata duerfen in ein href. html.escape() reicht hier NICHT:
+# 'javascript:alert(1)' enthaelt kein Zeichen, das escaped wuerde, und landet
+# unveraendert als klickbarer Code in der Karte. Eine Deklaration ist fremde
+# Eingabe; ein Renderer, der daraus Code ausfuehrbar macht, ist genau das, was
+# SECURITY.md als Sicherheitsproblem benennt.
+ERLAUBTE_SCHEMATA = ("http", "https")
+
+
+def sichere_url(wert: object) -> str | None:
+    """Gibt die URL escaped zurueck -- oder None, wenn ihr Schema unzulaessig ist.
+
+    Bewusst eine Positivliste: Was nicht ausdruecklich erlaubt ist, wird nicht
+    verlinkt. Bei Unklarheit lieber kein Link als ein gefaehrlicher.
+    """
+    try:
+        roh = str(wert).strip()
+        schema = urlparse(roh).scheme.lower()
+    except (ValueError, AttributeError):
+        return None
+    if schema not in ERLAUBTE_SCHEMATA:
+        return None
+    return html.escape(roh, quote=True)
 
 
 def flagge(code: str) -> str:
@@ -292,7 +317,9 @@ def render(dekl: dict) -> str:
     if org.get("uid"):
         meta.append(f'<span>{esc(org["uid"])}</span>')
     if org.get("website"):
-        meta.append(f'<a href="{esc(org["website"])}">{esc(org["website"])}</a>')
+        ziel = sichere_url(org["website"])
+        meta.append(f'<a href="{ziel}">{esc(org["website"])}</a>' if ziel
+                    else esc(org["website"]))
     if dekl.get("stand"):
         meta.append(f'<span>Stand {esc(dekl["stand"])}</span>')
 
@@ -312,7 +339,9 @@ def render(dekl: dict) -> str:
         betreff = f"Auskunftsbegehren nach Art. 25 DSG – {name}"
         aktionen.append(f'<a class="knopf" href="mailto:{esc(ausk["email"])}?subject={esc(betreff)}">Auskunft per E-Mail anfragen</a>')
     if ausk.get("formular_url"):
-        aktionen.append(f'<a class="knopf zweit" href="{esc(ausk["formular_url"])}">Auskunftsformular öffnen</a>')
+        ziel = sichere_url(ausk["formular_url"])
+        if ziel:
+            aktionen.append(f'<a class="knopf zweit" href="{ziel}">Auskunftsformular öffnen</a>')
     frist = ausk.get("frist_tage", 30)
     hinweis = f' {esc(ausk["hinweis"])}' if ausk.get("hinweis") else ""
 
@@ -336,9 +365,9 @@ def render(dekl: dict) -> str:
 <div class="fakten">{fakten_html}</div>
 <div class="rechte">
   <h2>Ihre Daten, Ihr Recht</h2>
-  <p>Sie können jederzeit kostenlos erfahren, welche Daten diese Organisation über Sie bearbeitet, und deren Berichtigung oder Löschung verlangen.{hinweis}</p>
+  <p>Sie können erfahren, welche Daten diese Organisation über Sie bearbeitet, und deren Berichtigung oder Löschung verlangen. Die Auskunft ist grundsätzlich kostenlos; verursacht ein Begehren einen unverhältnismässigen Aufwand, kann ausnahmsweise eine Kostenbeteiligung von bis zu 300 Franken verlangt werden (Art. 25 f. DSG).{hinweis}</p>
   <div class="rechte-aktionen">{"".join(aktionen)}</div>
-  <p class="frist">Zugesicherte Antwortfrist: {esc(frist)} Tage</p>
+  <p class="frist">Angestrebte Antwortfrist: {esc(frist)} Tage · gesetzlich in der Regel innert 30 Tagen; ist das nicht möglich, muss die Organisation dies mitteilen</p>
 </div>
 <main>
   <h2>Bearbeitungen und ihre Empfänger</h2>

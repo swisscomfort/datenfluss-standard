@@ -35,7 +35,13 @@ from pathlib import Path
 from urllib import robotparser
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+# Bewusst nur Request: Der Abruf laeuft ausnahmslos ueber netzschutz.oeffne().
+# urlopen/build_opener danebenstehen zu lassen, waere die Einladung, die
+# gemeinsame Zielpruefung spaeter versehentlich zu umgehen.
+from urllib.request import Request
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from netzschutz import ZielAbgelehnt, oeffne  # noqa: E402
 
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
 TIMEOUT = 12
@@ -68,6 +74,11 @@ TRACKER_DB: dict[str, tuple[str, str, str]] = {
     "usercentrics.eu": ("Usercentrics", "consent", "DE"),
     "cookiebot.com": ("Cookiebot", "consent", "DK"),
     "onetrust.com": ("OneTrust", "consent", "US"),
+    # OneTrust liefert ueber cookielaw.org aus; ohne diesen Eintrag taucht die
+    # verbreitetste Einwilligungsplattform als "unbekannter Host" auf.
+    "cookielaw.org": ("OneTrust", "consent", "US"),
+    "onetrust.io": ("OneTrust", "consent", "US"),
+    "fundingchoicesmessages.google.com": ("Google Funding Choices", "consent", "US"),
     "js.stripe.com": ("Stripe", "zahlung", "US/IE"),
     "paypal.com": ("PayPal", "zahlung", "US"),
     "klarna.com": ("Klarna", "zahlung", "SE"),
@@ -141,16 +152,45 @@ BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 
 
 def hole(url: str, ua: str = USER_AGENT):
+    """Ruft eine URL ab -- nur, wenn sie auf eine oeffentliche Adresse zeigt.
+
+    Der Scanner arbeitet Ziele ab, die von aussen kommen (Domainliste,
+    Selbstbedienungs-Vorschlag). Ohne diese Pruefung liesse er sich als Bote
+    fuer Abrufe in interne Netze verwenden, deren Ergebnis danach in einem
+    oeffentlichen Profil steht.
+    """
     req = Request(url, headers={
         "User-Agent": ua,
         "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "de-CH,de;q=0.9",
         "Accept-Encoding": "identity",
     })
-    with urlopen(req, timeout=TIMEOUT) as antwort:
+    with oeffne(req, TIMEOUT) as antwort:
         roh = antwort.read(2_000_000)  # 2 MB reichen fuer eine Startseite
         text = roh.decode("utf-8", errors="replace")
-        return antwort.geturl(), antwort.status, dict(antwort.headers), text
+        # Die Kopfzeilen bleiben als email.message.Message erhalten und werden
+        # NICHT in ein dict gewandelt. Ein dict kann jeden Namen nur einmal
+        # fuehren -- bei Set-Cookie schickt aber jeder gewoehnliche Server
+        # mehrere Zeilen, und dict() behaelt davon genau eine. Zusaetzlich
+        # fehlt dem dict get_all(), worauf der Zaehler unten angewiesen ist.
+        return antwort.geturl(), antwort.status, antwort.headers, text
+
+
+def zaehle_cookies(headers) -> int:
+    """Zaehlt die Set-Cookie-Kopfzeilen einer Antwort.
+
+    Nimmt jede Kopfzeilenform an, nicht nur die richtige: Wer hier eine
+    abgeflachte Abbildung hereinreicht, soll einen zu niedrigen Zaehlwert
+    bekommen und keinen AttributeError mitten in einem erfolgreichen Scan.
+    Der Absturz waere der teurere Fehler -- er faellt erst in der Produktion
+    auf, weil ein Testdoppel ohne mehrere Set-Cookie-Zeilen ihn nie ausloest.
+    """
+    hole_alle = getattr(headers, "get_all", None)
+    if callable(hole_alle):
+        return len(hole_alle("Set-Cookie") or [])
+    if hasattr(headers, "get"):
+        return 1 if headers.get("Set-Cookie") else 0
+    return 0
 
 
 def _abruf_beleg(exc: Exception) -> dict:
@@ -211,6 +251,24 @@ def _git_commit() -> str | None:
         ).stdout.strip() or None
     except Exception:
         return None
+
+
+def _aktualitaet_pruefen(dekl: dict) -> list[str]:
+    """Zeitabhaengiges Urteil ueber die Deklaration -- getrennt von Konformitaet.
+
+    Beim Herausloesen der Uhrzeit aus der Standardkonformitaet waren diese
+    Befunde zunaechst still aus den Profilen verschwunden. Das ist der falsche
+    Schluss aus der richtigen Trennung: Eine veraltete Deklaration bleibt
+    standardkonform -- aber ein Register, das ihr Alter verschweigt, verliert
+    genau die Aussage, fuer die es existiert.
+    """
+    try:
+        from validator import Befund, pruefe_aktualitaet
+    except ImportError:
+        return []
+    befund = Befund()
+    pruefe_aktualitaet(dekl, befund)
+    return befund.profil_fehler + befund.profil_warnungen
 
 
 def _deklaration_pruefen(dekl: dict) -> tuple[str, list[str]]:
@@ -296,6 +354,12 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
                 raise
             else:
                 raise
+    except ZielAbgelehnt as exc:
+        # Kein Messfehler, sondern eine bewusste Verweigerung: das Ziel zeigt
+        # nicht ins oeffentliche Netz. Als solche benannt, nicht als Panne.
+        profil["status"] = "abgelehnt_kein_oeffentliches_ziel"
+        profil["fehler"] = str(exc)
+        return profil
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
         profil["status"] = "fehler"
         profil["fehler"] = str(exc)
@@ -343,12 +407,14 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
         key=lambda e: (e["kategorie"], e["anbieter"]),
     )
     profil["unbekannte_externe_hosts"] = sorted(unbekannt)
-    cookies = headers.get("Set-Cookie")
-    profil["cookies_beim_erstaufruf"] = len(cookies.split(",")) if cookies else 0
+    # get_all() liefert jeden Set-Cookie-Header einzeln. Ein split(",") waere
+    # doppelt falsch: get() gibt nur den ersten Header zurueck, und Kommas
+    # kommen in 'Expires=Wed, 09 Jun 2027 ...' regulaer vor.
+    profil["cookies_beim_erstaufruf"] = zaehle_cookies(headers)
 
     # ---- Deklaration pruefen und Abweichung berechnen ----------------------
     basis = f"{urlparse(finale_url).scheme}://{urlparse(finale_url).netloc}"
-    dekl_info: dict = {"status": "nicht_gefunden", "vorhanden": False}
+    dekl_info: dict = {"status": "nicht_vorhanden", "vorhanden": False}
     try:
         _, _, _, dekl_text = hole(urljoin(basis, "/.well-known/datenfluss.json"), ua)
         try:
@@ -361,10 +427,17 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
                 "befunde": [f"Datei ist kein gueltiges JSON-Objekt ({exc})"]}
             raise _DeklFertig
         status, befunde = _deklaration_pruefen(dekl)
+        # Erst das Dict aufbauen, dann den Aktualitaetsbefund hineinschreiben.
+        # Die umgekehrte Reihenfolge stand schon einmal hier und war der Grund,
+        # warum der Befund unbemerkt aus jedem Profil verschwand: die
+        # Neuzuweisung ersetzt das ganze Dict samt zuvor gesetztem Feld.
         dekl_info = {"status": status, "vorhanden": True,
                      "spec_version": dekl.get("spec_version"),
                      "stand": dekl.get("stand"),
                      "organisation": dekl.get("organisation", {}).get("name")}
+        aktualitaet = _aktualitaet_pruefen(dekl)
+        if aktualitaet:
+            dekl_info["aktualitaet"] = aktualitaet
         if befunde:
             dekl_info["befunde"] = befunde
         deklarierte = " ".join(
@@ -381,8 +454,29 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
         profil["datenfluss_deklaration"] = dekl_info
     except _DeklFertig:
         pass  # Status wurde oben bereits gesetzt
-    except Exception:
-        profil["datenfluss_deklaration"] = dekl_info  # nicht_gefunden
+    except HTTPError as exc:
+        # 404 heisst wirklich "nicht vorhanden". Jeder andere HTTP-Fehler
+        # heisst "nicht beurteilbar" -- ihn als Abwesenheit zu melden, waere
+        # eine Behauptung ueber eine Datei, die wir nie gesehen haben.
+        if exc.code == 404:
+            dekl_info["status"] = "nicht_vorhanden"
+        else:
+            dekl_info["status"] = "nicht_abrufbar"
+            dekl_info["abruf_fehler"] = f"HTTP {exc.code}"
+        profil["datenfluss_deklaration"] = dekl_info
+    except (TimeoutError, URLError, OSError) as exc:
+        grund = getattr(exc, "reason", exc)
+        dekl_info["status"] = "nicht_erreichbar"
+        dekl_info["abruf_fehler"] = f"{type(exc).__name__}: {grund}"
+        profil["datenfluss_deklaration"] = dekl_info
+    except json.JSONDecodeError as exc:
+        dekl_info["status"] = "kein_gueltiges_json"
+        dekl_info["abruf_fehler"] = str(exc)
+        profil["datenfluss_deklaration"] = dekl_info
+    except Exception as exc:  # unerwartet: benennen, nicht als Abwesenheit tarnen
+        dekl_info["status"] = "pruefung_fehlgeschlagen"
+        dekl_info["abruf_fehler"] = f"{type(exc).__name__}: {exc}"
+        profil["datenfluss_deklaration"] = dekl_info
 
     try:  # kleiner Bruder-Standard als Bonus-Signal
         _, s, _, _ = hole(urljoin(basis, "/.well-known/security.txt"), ua)
@@ -395,7 +489,8 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
 
 def zusammenfassung(p: dict) -> str:
     z = [f"\n=== {p.get('finale_url', p['url'])} ==="]
-    if p.get("status") in ("fehler", "uebersprungen_robots_txt"):
+    if p.get("status") in ("fehler", "uebersprungen_robots_txt",
+                           "abgelehnt_kein_oeffentliches_ziel"):
         z.append(f"  Status: {p['status']} {p.get('fehler', '')}")
         return "\n".join(z)
     if p.get("abruf_hinweis"):
@@ -406,13 +501,28 @@ def zusammenfassung(p: dict) -> str:
     for e in p["drittanbieter"]:
         z.append(f"    - [{e['kategorie']:>14}] {e['anbieter']} ({e['sitz_hinweis']})")
     d = p["datenfluss_deklaration"]
-    status = d.get("status", "nicht_gefunden")
+    status = d.get("status", "nicht_vorhanden")
+    # Nicht-Wissen und Abwesenheit sind zweierlei. Nur der erste Block darf
+    # sagen "keine Deklaration"; alles andere sagt, warum wir es nicht wissen.
+    UNGEWISS = {
+        "nicht_erreichbar": "Server nicht erreichbar",
+        "nicht_abrufbar": "Abruf abgewiesen",
+        "kein_gueltiges_json": "Datei gefunden, aber kein gueltiges JSON",
+        "pruefung_fehlgeschlagen": "Pruefung fehlgeschlagen",
+    }
     if status == "konform":
         z.append(f"  Deklaration: KONFORM (Stand {d.get('stand')}, {d.get('organisation')})")
         fehlt = d.get("gemessen_aber_nicht_deklariert", [])
         z.append("  Abweichung gemessen↔deklariert: " + (", ".join(fehlt) if fehlt else "keine"))
-    elif status == "nicht_gefunden":
-        z.append("  Deklaration: keine /.well-known/datenfluss.json gefunden")
+        for a in d.get("aktualitaet", []):
+            z.append(f"    Aktualitaet: {a}")
+    elif status == "nicht_vorhanden":
+        z.append("  Deklaration: keine /.well-known/datenfluss.json vorhanden (HTTP 404)")
+    elif status in UNGEWISS:
+        grund = d.get("abruf_fehler", "")
+        z.append(f"  Deklaration: UNGEKLAERT – {UNGEWISS[status]}"
+                 + (f" ({grund})" if grund else ""))
+        z.append("    Das ist kein Nachweis, dass keine Deklaration existiert.")
     else:
         z.append(f"  Deklaration: Datei gefunden, aber {status.upper()}")
         for b in d.get("befunde", [])[:3]:

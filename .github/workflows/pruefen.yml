@@ -8,8 +8,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install jsonschema
+      # Gepinnt: eine Kernabhaengigkeit, die sich unbemerkt aendert, macht
+      # das Urteil ueber Standardkonformitaet unreproduzierbar.
+      - run: pip install 'jsonschema==4.23.0'
       - name: Beispiel-Deklaration validieren
         run: python3 werkzeuge/validator.py beispiele/beispiel-deklaration.json
       - name: Konformitaets-Testsuite
         run: python3 werkzeuge/konformitaet.py
+      - name: Selbsttest DNS-Messung (ohne Netzzugriff)
+        run: python3 werkzeuge/test_dns_messung.py
+      - name: Selbsttest Einwilligungs-Leser (ohne Netzzugriff)
+        run: python3 werkzeuge/test_einwilligung.py
+      - name: Regressionstests der Sanierung (ohne Netzzugriff)
+        run: python3 werkzeuge/test_sanierung.py

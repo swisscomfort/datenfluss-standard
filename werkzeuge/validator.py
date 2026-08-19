@@ -55,7 +55,18 @@ EU_EWR = {
     "SI", "ES", "SE", "IS", "LI", "NO",
 }
 WEITERE_ANGEMESSEN = {
-    "GB", "AD", "AR", "CA", "FO", "GG", "IM", "IL", "JE", "MC", "NZ", "UY",
+    "GB", "AD", "AR", "FO", "GG", "GI", "IM", "IL", "JE", "MC", "NZ", "UY",
+}
+
+# Bedingt angemessen: Anhang 1 DSV listet diese Staaten nur unter einem
+# Vorbehalt. Ob der Vorbehalt erfuellt ist, haengt vom konkreten Empfaenger ab
+# und laesst sich aus einer Deklaration allein nicht entscheiden. Sie deshalb
+# stillschweigend als angemessen zu behandeln, waere ein falscher Freispruch;
+# sie als Drittland zu behandeln, ein falscher Vorwurf. Beides waere schlimmer
+# als die Wahrheit: hier muss ein Mensch pruefen.
+BEDINGT_ANGEMESSEN = {
+    "CA": ("nur soweit das kanadische PIPEDA im Privatsektor anwendbar ist oder "
+           "ein weitgehend entsprechendes Provinzgesetz gilt (Anhang 1 DSV)"),
 }
 ANGEMESSENE_LAENDER = EU_EWR | WEITERE_ANGEMESSEN | {"CH"}
 
@@ -135,21 +146,18 @@ def parse_datum(wert: str | None) -> date | None:
 
 
 def pruefe_semantik_universell(dekl: dict, befund: Befund) -> None:
-    """Rechtsraumunabhaengige Regeln: Datumslogik, eindeutige IDs, Signatur."""
-    heute = date.today()
+    """Rechtsraumunabhaengige, **uhrzeitfreie** Regeln.
 
-    # --- Datumslogik -------------------------------------------------------
+    Hier darf nichts stehen, was von der aktuellen Zeit abhaengt. Sonst kippt
+    eine unveraenderte Datei ihr Standardurteil beim blossen Verstreichen von
+    Zeit -- genau das, was der Docstring von `Befund` ausschliesst.
+    Zeitabhaengiges gehoert in `pruefe_aktualitaet()`.
+    """
+    # --- Datumslogik: nur Beziehungen der Felder untereinander --------------
     stand = parse_datum(dekl.get("stand"))
-    if stand:
-        if stand > heute:
-            befund.f("stand", f"Stand-Datum liegt in der Zukunft ({stand}).")
-        elif (heute - stand).days > MAX_ALTER_TAGE:
-            befund.w("stand", f"Deklaration ist aelter als 18 Monate (Stand {stand}) – Ueberpruefung faellig.")
     naechste = parse_datum(dekl.get("naechste_ueberpruefung"))
     if naechste and stand and naechste <= stand:
         befund.w("naechste_ueberpruefung", "Liegt nicht nach dem Stand-Datum.")
-    if naechste and naechste < heute:
-        befund.w("naechste_ueberpruefung", f"Ueberpruefungstermin ist verstrichen ({naechste}).")
 
     # --- Eindeutige IDs ----------------------------------------------------
     ids: dict[str, int] = {}
@@ -163,6 +171,28 @@ def pruefe_semantik_universell(dekl: dict, befund: Befund) -> None:
     # --- Signatur ----------------------------------------------------------
     if "signatur" not in dekl:
         befund.w("signatur", "Deklaration ist unsigniert – zulaessig in v0.1, ab v1.0 verpflichtend.")
+
+
+def pruefe_aktualitaet(dekl: dict, befund: Befund, heute: date | None = None) -> None:
+    """Zeitabhaengige Pruefungen -- bewusst NICHT Teil der Standardkonformitaet.
+
+    Ob eine Deklaration aktuell ist, haengt am Kalender und aendert sich, ohne
+    dass jemand die Datei anfasst. Dieses Urteil gehoert deshalb zum
+    zeitabhaengigen Befund, genau wie die Rechtslage.
+
+    `heute` ist injizierbar, damit Tests nicht von der Systemuhr abhaengen.
+    """
+    heute = heute or date.today()
+    stand = parse_datum(dekl.get("stand"))
+    if stand:
+        if stand > heute:
+            befund.pf("stand", f"Stand-Datum liegt in der Zukunft ({stand}) – "
+                               f"die Deklaration beschreibt einen Zustand, der noch nicht eingetreten ist.")
+        elif (heute - stand).days > MAX_ALTER_TAGE:
+            befund.pw("stand", f"Deklaration ist aelter als 18 Monate (Stand {stand}) – Ueberpruefung faellig.")
+    naechste = parse_datum(dekl.get("naechste_ueberpruefung"))
+    if naechste and naechste < heute:
+        befund.pw("naechste_ueberpruefung", f"Ueberpruefungstermin ist verstrichen ({naechste}).")
 
 
 def pruefe_profil_ch(dekl: dict, befund: Befund) -> None:
@@ -191,6 +221,16 @@ def pruefe_profil_ch(dekl: dict, befund: Befund) -> None:
                     befund.pw(pfad, f"DPF-Zertifizierung von '{name}' periodisch pruefen: {DPF_LISTE_URL}")
                 elif not garantien:
                     befund.pf(pfad, f"US-Empfaenger '{name}' ohne Angabe einer Garantie.")
+            elif land in BEDINGT_ANGEMESSEN:
+                vorbehalt = BEDINGT_ANGEMESSEN[land]
+                if garantien == "nicht_erforderlich_angemessenes_land":
+                    befund.pw(pfad, f"'{name}' ({land}): angemessen {vorbehalt}. "
+                                    f"Aus der Deklaration nicht entscheidbar – bitte manuell pruefen.")
+                elif not garantien:
+                    befund.pw(pfad, f"'{name}' ({land}): angemessen {vorbehalt}. "
+                                    f"Ohne Garantie nur zulaessig, wenn der Vorbehalt erfuellt ist – manuell pruefen.")
+                elif garantien == "angemessenheit_dpf_zertifiziert":
+                    befund.pf(pfad, "Garantie 'angemessenheit_dpf_zertifiziert' ist US-Empfaengern vorbehalten.")
             elif land in ANGEMESSENE_LAENDER:
                 if not garantien:
                     befund.pw(pfad, f"'{name}' ({land}): Garantie fehlt – 'nicht_erforderlich_angemessenes_land' kann gesetzt werden.")
@@ -240,6 +280,7 @@ def main() -> int:
     pruefe_schema(deklaration, schema, befund)
     if not befund.fehler:  # Semantik nur pruefen, wenn die Struktur stimmt
         pruefe_semantik_universell(deklaration, befund)
+        pruefe_aktualitaet(deklaration, befund)
         PROFILE[args.profil][1](deklaration, befund)
 
     name = deklaration.get("organisation", {}).get("name", args.deklaration.name)
