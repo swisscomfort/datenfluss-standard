@@ -55,7 +55,7 @@ EU_EWR = {
     "SI", "ES", "SE", "IS", "LI", "NO",
 }
 WEITERE_ANGEMESSEN = {
-    "GB", "AD", "AR", "FO", "GG", "IM", "IL", "JE", "MC", "NZ", "UY",
+    "GB", "AD", "AR", "FO", "GG", "GI", "IM", "IL", "JE", "MC", "NZ", "UY",
 }
 
 # Bedingt angemessen: Anhang 1 DSV listet diese Staaten nur unter einem

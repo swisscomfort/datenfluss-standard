@@ -395,6 +395,72 @@ pruefe("Keine der geprueften Subdomains zeigt auf einen Dritten"
        in dns_messung.zusammenfassung(_dns_klar),
        "Bei vollstaendig beantworteten Fragen fehlt die klare Aussage")
 
+# ---------------------------------------------------------------------------
+# 13. Gibraltar fehlte im Rechtsdatensatz
+#
+#     Anhang 1 DSV fuehrt Gibraltar ausdruecklich als angemessenes Gebiet.
+#     Der Datensatz kannte es nicht -- ein Empfaenger in Gibraltar bekam
+#     damit faelschlich "Garantie erforderlich" vorgehalten. Ein falscher
+#     Vorwurf ist fuer ein Register so teuer wie ein falscher Freispruch:
+#     Beide beschaedigen die einzige Waehrung, die es hat.
+# ---------------------------------------------------------------------------
+pruefe("GI" in validator.WEITERE_ANGEMESSEN,
+       "Gibraltar fehlt im CH-Rechtsdatensatz (Anhang 1 DSV)")
+pruefe("GI" in validator.ANGEMESSENE_LAENDER,
+       "Gibraltar zaehlt nicht zu den angemessenen Laendern")
+
+
+def _profil_urteil(land: str, garantien: str | None) -> tuple[list, list]:
+    """Ein Empfaenger durch das CH-Pruefprofil. Rueckgabe: (Fehler, Warnungen)."""
+    empf = {"name": "Testempfaenger", "land": land, "rolle": "auftragsbearbeiter"}
+    if garantien:
+        empf["garantien"] = garantien
+    b = validator.Befund()
+    validator.pruefe_profil_ch({"bearbeitungen": [{"empfaenger": [empf]}]}, b)
+    return b.profil_fehler, b.profil_warnungen
+
+
+_gi_f, _gi_w = _profil_urteil("GI", "nicht_erforderlich_angemessenes_land")
+pruefe(not _gi_f, f"GI mit 'nicht erforderlich' erzeugt einen Profilfehler: {_gi_f}")
+pruefe(not _gi_w, f"GI mit 'nicht erforderlich' erzeugt einen unerwarteten Hinweis: {_gi_w}")
+
+_gi_f2, _gi_w2 = _profil_urteil("GI", None)
+_de_f2, _de_w2 = _profil_urteil("DE", None)
+pruefe(not _gi_f2, f"GI ohne Garantie erzeugt einen Profilfehler: {_gi_f2}")
+pruefe(len(_gi_w2) == 1, f"GI ohne Garantie: erwartet ein Hinweis, erhalten {_gi_w2}")
+# Gleich behandelt wie jeder andere angemessene Staat -- kein Sonderweg.
+pruefe(len(_gi_w2) == len(_de_w2) and not _de_f2,
+       "GI ohne Garantie wird anders behandelt als DE ohne Garantie")
+
+# ---------------------------------------------------------------------------
+# 14. Vollstaendigkeit von Anhang 1 DSV
+#
+#     Ein unabhaengiges Test-Orakel, bewusst KEINE zweite Produktionsquelle:
+#     Es zaehlt nur und kennt die Sonderfaelle namentlich. Wer den Datensatz
+#     kuerzt oder erweitert, muss hier vorbeikommen und die Zahl bewusst
+#     mitfuehren -- ein stiller Verlust wie der von Gibraltar faellt auf.
+# ---------------------------------------------------------------------------
+ANHANG1_AUSLAENDISCHE_FAELLE = 44   # ohne die Schweiz selbst
+
+_faelle = (len(validator.EU_EWR)
+           + len(validator.WEITERE_ANGEMESSEN)
+           + len(validator.BEDINGT_ANGEMESSEN)
+           + 1)                       # USA: angemessen nur mit DPF-Zertifizierung
+pruefe(_faelle == ANHANG1_AUSLAENDISCHE_FAELLE,
+       f"Anhang 1 DSV: {_faelle} auslaendische Faelle statt "
+       f"{ANHANG1_AUSLAENDISCHE_FAELLE} – Eintrag verloren oder unbelegt ergaenzt")
+pruefe("CH" not in validator.EU_EWR and "CH" not in validator.WEITERE_ANGEMESSEN,
+       "Die Schweiz gehoert nicht in die Liste der auslaendischen Faelle")
+pruefe("CA" in validator.BEDINGT_ANGEMESSEN,
+       "Kanada ist kein Sonderfall mehr – der Vorbehalt aus Anhang 1 DSV fehlt")
+pruefe("US" not in validator.ANGEMESSENE_LAENDER,
+       "USA pauschal als angemessen – der DPF-Sonderfall ist verloren")
+# Die drei Mengen duerfen sich nie ueberschneiden, sonst zaehlt das Gate falsch.
+pruefe(not (validator.EU_EWR & validator.WEITERE_ANGEMESSEN),
+       "EU/EWR und weitere angemessene Staaten ueberschneiden sich")
+pruefe(not (validator.ANGEMESSENE_LAENDER & set(validator.BEDINGT_ANGEMESSEN)),
+       "Ein Staat gilt gleichzeitig als angemessen und als bedingt angemessen")
+
 
 def main() -> int:
     if FEHLER:
