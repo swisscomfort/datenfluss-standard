@@ -51,7 +51,10 @@ from pathlib import Path
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+# Bewusst OHNE urlopen: Jeder Abruf laeuft ueber netzschutz.oeffne().
+# Ein danebenliegender urlopen-Import ist die Einladung, die
+# gemeinsame Pruefschicht spaeter versehentlich zu umgehen.
+from urllib.request import Request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from netzschutz import ZielAbgelehnt, oeffne  # noqa: E402

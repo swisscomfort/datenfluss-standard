@@ -385,7 +385,16 @@ def zusammenfassung(m: dict) -> str:
             zeilen.append(f"  {t['subdomain']} zeigt auf {t['anbieter']} "
                           f"({t['sitz_hinweis']}, {t['kategorie']}) – {t['zeigt_auf']}")
     else:
-        zeilen.append("  Keine der geprueften Subdomains zeigt auf einen Dritten")
+        # "Kein Treffer" ist nur dann eine Aussage, wenn alle Fragen beantwortet
+        # wurden. Blieb auch nur eine CNAME-Frage offen, ist der Satz "keine
+        # zeigt auf einen Dritten" unbeweisbar -- die eine unbeantwortete Frage
+        # koennte genau der Treffer sein.
+        offen_cname = [u for u in m.get("ungeklaerte_fragen", []) if u["typ"] == "CNAME"]
+        if offen_cname:
+            zeilen.append(f"  Kein Drittziel nachgewiesen; {len(offen_cname)} "
+                          f"CNAME-Frage{'n' if len(offen_cname) != 1 else ''} ungeklaert")
+        else:
+            zeilen.append("  Keine der geprueften Subdomains zeigt auf einen Dritten")
     for u in m.get("ungeklaerte_fragen", []):
         zeilen.append(f"  UNGEKLAERT: {u['typ']} fuer {u['name']} – {u['grund']}. "
                       f"Kein Nachweis, dass kein Eintrag existiert.")

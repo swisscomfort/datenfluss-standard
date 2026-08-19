@@ -35,10 +35,13 @@ from pathlib import Path
 from urllib import robotparser
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
+# Bewusst nur Request: Der Abruf laeuft ausnahmslos ueber netzschutz.oeffne().
+# urlopen/build_opener danebenstehen zu lassen, waere die Einladung, die
+# gemeinsame Zielpruefung spaeter versehentlich zu umgehen.
+from urllib.request import Request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from netzschutz import GeprueftUmleiten, ZielAbgelehnt, oeffne, pruefe_ziel  # noqa: E402
+from netzschutz import ZielAbgelehnt, oeffne  # noqa: E402
 
 USER_AGENT = "DatenflussScanner/0.1 (offener-standard-prototyp)"
 TIMEOUT = 12
@@ -165,7 +168,29 @@ def hole(url: str, ua: str = USER_AGENT):
     with oeffne(req, TIMEOUT) as antwort:
         roh = antwort.read(2_000_000)  # 2 MB reichen fuer eine Startseite
         text = roh.decode("utf-8", errors="replace")
-        return antwort.geturl(), antwort.status, dict(antwort.headers), text
+        # Die Kopfzeilen bleiben als email.message.Message erhalten und werden
+        # NICHT in ein dict gewandelt. Ein dict kann jeden Namen nur einmal
+        # fuehren -- bei Set-Cookie schickt aber jeder gewoehnliche Server
+        # mehrere Zeilen, und dict() behaelt davon genau eine. Zusaetzlich
+        # fehlt dem dict get_all(), worauf der Zaehler unten angewiesen ist.
+        return antwort.geturl(), antwort.status, antwort.headers, text
+
+
+def zaehle_cookies(headers) -> int:
+    """Zaehlt die Set-Cookie-Kopfzeilen einer Antwort.
+
+    Nimmt jede Kopfzeilenform an, nicht nur die richtige: Wer hier eine
+    abgeflachte Abbildung hereinreicht, soll einen zu niedrigen Zaehlwert
+    bekommen und keinen AttributeError mitten in einem erfolgreichen Scan.
+    Der Absturz waere der teurere Fehler -- er faellt erst in der Produktion
+    auf, weil ein Testdoppel ohne mehrere Set-Cookie-Zeilen ihn nie ausloest.
+    """
+    hole_alle = getattr(headers, "get_all", None)
+    if callable(hole_alle):
+        return len(hole_alle("Set-Cookie") or [])
+    if hasattr(headers, "get"):
+        return 1 if headers.get("Set-Cookie") else 0
+    return 0
 
 
 def _abruf_beleg(exc: Exception) -> dict:
@@ -385,7 +410,7 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
     # get_all() liefert jeden Set-Cookie-Header einzeln. Ein split(",") waere
     # doppelt falsch: get() gibt nur den ersten Header zurueck, und Kommas
     # kommen in 'Expires=Wed, 09 Jun 2027 ...' regulaer vor.
-    profil["cookies_beim_erstaufruf"] = len(headers.get_all("Set-Cookie") or [])
+    profil["cookies_beim_erstaufruf"] = zaehle_cookies(headers)
 
     # ---- Deklaration pruefen und Abweichung berechnen ----------------------
     basis = f"{urlparse(finale_url).scheme}://{urlparse(finale_url).netloc}"
@@ -402,13 +427,17 @@ def scanne(url: str, hartnaeckig: bool = False) -> dict:
                 "befunde": [f"Datei ist kein gueltiges JSON-Objekt ({exc})"]}
             raise _DeklFertig
         status, befunde = _deklaration_pruefen(dekl)
-        aktualitaet = _aktualitaet_pruefen(dekl)
-        if aktualitaet:
-            dekl_info["aktualitaet"] = aktualitaet
+        # Erst das Dict aufbauen, dann den Aktualitaetsbefund hineinschreiben.
+        # Die umgekehrte Reihenfolge stand schon einmal hier und war der Grund,
+        # warum der Befund unbemerkt aus jedem Profil verschwand: die
+        # Neuzuweisung ersetzt das ganze Dict samt zuvor gesetztem Feld.
         dekl_info = {"status": status, "vorhanden": True,
                      "spec_version": dekl.get("spec_version"),
                      "stand": dekl.get("stand"),
                      "organisation": dekl.get("organisation", {}).get("name")}
+        aktualitaet = _aktualitaet_pruefen(dekl)
+        if aktualitaet:
+            dekl_info["aktualitaet"] = aktualitaet
         if befunde:
             dekl_info["befunde"] = befunde
         deklarierte = " ".join(

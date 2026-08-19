@@ -277,6 +277,124 @@ pruefe(any("Zukunft" in b for b in befunde_akt),
 pruefe(scanner._deklaration_pruefen(zukunft)[0] == "konform",
        "Aktualitaet kippt faelschlich die Konformitaet")
 
+# ---------------------------------------------------------------------------
+# 11. Der vollstaendige scanne()-Pfad -- nicht nur seine Einzelteile
+#
+#     Die Runden 1 und 2 hatten je einen Fehler, den die Tests nicht sahen,
+#     weil sie nur die neue Regel isoliert prueften und nie den Weg, ueber den
+#     diese Regel spaeter in ein oeffentliches Profil gelangt:
+#       - hole() gab die Kopfzeilen als dict zurueck, scanne() rief darauf
+#         get_all() auf. Ein dict hat kein get_all -> AttributeError mitten in
+#         einem *erfolgreichen* Scan. Der Test prueffte Message.get_all()
+#         allein und war gruen.
+#       - Der Aktualitaetsbefund wurde in dekl_info geschrieben, bevor dekl_info
+#         neu zugewiesen wurde -- und war damit wieder weg. Der Test rief
+#         _aktualitaet_pruefen() direkt auf und war gruen.
+#
+#     Daraus die Regel fuer alles Weitere: Jede Regel, die spaeter Geld,
+#     oeffentliche Befunde oder Kundenalarme beeinflusst, wird mindestens
+#     einmal ueber ihren vollstaendigen Pfad geprueft.
+# ---------------------------------------------------------------------------
+_dekl_e2e = json.loads(json.dumps(zukunft))
+_dekl_e2e["stand"] = "2999-01-01"   # unabhaengig vom Kalender in der Zukunft
+
+_kopf_e2e = Message()
+_kopf_e2e["Content-Type"] = "text/html; charset=utf-8"
+# Drei echte Set-Cookie-Zeilen, eine davon mit Komma im Expires-Wert:
+# genau die Antwort, an der sowohl dict() als auch split(",") scheitern.
+_kopf_e2e["Set-Cookie"] = "a=1; Path=/"
+_kopf_e2e["Set-Cookie"] = "b=2; Expires=Wed, 09 Jun 2027 10:18:14 GMT"
+_kopf_e2e["Set-Cookie"] = "c=3; Secure"
+
+_HTML_E2E = ("<html><head><script src='https://www.googletagmanager.com/gtag/js'>"
+             "</script></head><body>hallo</body></html>")
+
+
+class _AntwortE2E:
+    """Antwortobjekt in der Form, die urllib liefert.
+
+    Die Attrappe sitzt bewusst UNTER hole(), nicht darueber: Der erste
+    Anlauf dieses Tests ersetzte hole() selbst -- und uebersprang damit
+    genau die Zeile, die in der Produktion abstuerzte. Ein Testdoppel darf
+    nie den Code ersetzen, den es pruefen soll.
+    """
+
+    def __init__(self, url, status, kopf, koerper):
+        self._url, self.status, self.headers = url, status, kopf
+        self._koerper = koerper.encode("utf-8")
+
+    def read(self, n=-1):
+        return self._koerper[:n] if n and n > 0 else self._koerper
+
+    def geturl(self):
+        return self._url
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+
+def _oeffne_e2e(req, timeout=None):
+    """Testdoppel fuer netzschutz.oeffne(): kein Netz, sonst alles echt."""
+    url = req if isinstance(req, str) else req.full_url
+    if url.endswith("/.well-known/datenfluss.json"):
+        return _AntwortE2E(url, 200, Message(), json.dumps(_dekl_e2e))
+    if url.endswith("/.well-known/security.txt"):
+        return _AntwortE2E(url, 404, Message(), "")
+    return _AntwortE2E(url, 200, _kopf_e2e, _HTML_E2E)
+
+
+_echtes_oeffne, _echtes_robots = scanner.oeffne, scanner.robots_erlaubt
+scanner.oeffne, scanner.robots_erlaubt = _oeffne_e2e, lambda _url: True
+try:
+    _profil = scanner.scanne("https://beispiel.example")
+finally:
+    scanner.oeffne, scanner.robots_erlaubt = _echtes_oeffne, _echtes_robots
+
+pruefe(_profil.get("status") == 200,
+       f"scanne() bricht bei einer erfolgreichen Antwort ab: {_profil.get('status')!r} "
+       f"{_profil.get('fehler', '')}")
+pruefe(_profil.get("cookies_beim_erstaufruf") == 3,
+       f"Set-Cookie-Zeilen falsch gezaehlt: {_profil.get('cookies_beim_erstaufruf')!r} statt 3")
+
+_d = _profil.get("datenfluss_deklaration", {})
+pruefe(_d.get("status") == "konform",
+       f"Deklaration im vollen Pfad nicht als konform erkannt: {_d.get('status')!r}")
+pruefe("aktualitaet" in _d,
+       "Aktualitaetsbefund fehlt im erzeugten Profil (wird ueberschrieben)")
+pruefe(any("Zukunft" in b for b in _d.get("aktualitaet", [])),
+       f"Zukunftsdatum nicht im Profilbefund: {_d.get('aktualitaet')!r}")
+
+# Und die Zaehlkapsel selbst: sie muss auch eine abgeflachte Abbildung
+# ueberleben, statt einen erfolgreichen Scan mit AttributeError zu beenden.
+pruefe(scanner.zaehle_cookies(_kopf_e2e) == 3, "zaehle_cookies zaehlt Message falsch")
+pruefe(scanner.zaehle_cookies(dict(_kopf_e2e)) == 1,
+       "zaehle_cookies stuerzt bei einem dict ab, statt zu wenig zu zaehlen")
+pruefe(scanner.zaehle_cookies(Message()) == 0, "zaehle_cookies zaehlt ohne Cookies falsch")
+
+# ---------------------------------------------------------------------------
+# 12. CNAME: ungeklaert darf nicht zu "keiner zeigt auf einen Dritten" werden
+# ---------------------------------------------------------------------------
+_dns_offen = {
+    "domain": "beispiel.ch", "post_empfaenger": [],
+    "sendeberechtigte": {"dienste": [], "unbekannte_includes": []},
+    "erste_partei_tarnung": [], "laender_hinweise": [],
+    "ungeklaerte_fragen": [{"name": "metrics.beispiel.ch", "typ": "CNAME",
+                            "grund": "SERVFAIL"}],
+}
+_text_offen = dns_messung.zusammenfassung(_dns_offen)
+pruefe("Keine der geprueften Subdomains zeigt auf einen Dritten" not in _text_offen,
+       "Abwesenheitsbehauptung trotz ungeklaerter CNAME-Frage")
+pruefe("ungeklaert" in _text_offen,
+       "Ungeklaerte CNAME-Frage wird in der Zusammenfassung nicht benannt")
+
+_dns_klar = {**_dns_offen, "ungeklaerte_fragen": []}
+pruefe("Keine der geprueften Subdomains zeigt auf einen Dritten"
+       in dns_messung.zusammenfassung(_dns_klar),
+       "Bei vollstaendig beantworteten Fragen fehlt die klare Aussage")
+
 
 def main() -> int:
     if FEHLER:
