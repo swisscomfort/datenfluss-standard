@@ -1,23 +1,35 @@
-name: Deklaration pruefen
-on: [push, pull_request]
+name: Standard pruefen
+
+# CI ruft dieselbe Pruefmaschine auf wie die lokale Arbeit: `make verify`.
+# Vorher standen die Einzelschritte hier im YAML; wer lokal pruefen wollte,
+# musste sie abschreiben. Zwei Pruefwahrheiten driften, und danach beweist ein
+# gruener Lauf nur noch, dass die abgeschriebene Variante gruen ist.
+#
+# make verify enthaelt weiterhin genau diese Schritte - Beispiel-Deklaration,
+# Konformitaets-Testsuite und die netzfreien Selbsttests der Messwerkzeuge -
+# und zusaetzlich den Anweisungs-Waechter samt seinen Negativtests.
+#
+# jsonschema bleibt gepinnt: Eine Kernabhaengigkeit, die sich unbemerkt
+# aendert, macht das Urteil ueber Standardkonformitaet unreproduzierbar. Die
+# Version steht in scripts/project/verify.sh, damit lokal und in CI dieselbe
+# gilt; fehlt sie, legt verify eine Umgebung ausserhalb des Arbeitsbaums an.
+
+on: [push, pull_request, workflow_dispatch]
+
 jobs:
-  validieren:
+  pruefen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # make verify vergleicht HEAD gegen den base_sha des Blocks. Mit
+          # einem flachen Klon fehlt dieser Commit, und die Scope-Pruefung
+          # faellt still aus.
+          fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      # Gepinnt: eine Kernabhaengigkeit, die sich unbemerkt aendert, macht
-      # das Urteil ueber Standardkonformitaet unreproduzierbar.
-      - run: pip install 'jsonschema==4.23.0'
-      - name: Beispiel-Deklaration validieren
-        run: python3 werkzeuge/validator.py beispiele/beispiel-deklaration.json
-      - name: Konformitaets-Testsuite
-        run: python3 werkzeuge/konformitaet.py
-      - name: Selbsttest DNS-Messung (ohne Netzzugriff)
-        run: python3 werkzeuge/test_dns_messung.py
-      - name: Selbsttest Einwilligungs-Leser (ohne Netzzugriff)
-        run: python3 werkzeuge/test_einwilligung.py
-      - name: Regressionstests der Sanierung (ohne Netzzugriff)
-        run: python3 werkzeuge/test_sanierung.py
+
+      - name: make verify
+        run: make verify

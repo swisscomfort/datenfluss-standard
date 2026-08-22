@@ -1,0 +1,78 @@
+{
+  "work_order": "W000",
+  "repository": "swisscomfort/datenfluss-standard",
+  "base_sha": "a71dd0fb2f2067dd8d99042cc35a12680e88e59d",
+  "head_sha": "b6f0846784083d9ec7a25e2932c4afc1fce9252a",
+  "branch": "work/W000-foundation",
+  "generated_at": "2026-08-22T17:11:41Z",
+  "execution": {
+    "tool": "Claude Code",
+    "model": "claude-opus-5[1m] (Opus 5, 1M Kontext)",
+    "effort": "nicht sichtbar gesetzt; kein Fallback angeordnet",
+    "permission_mode": "bypassPermissions"
+  },
+  "changed_files": [
+    ".github/workflows/pruefen.yml",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "Makefile",
+    "PROJECT_RULES.md",
+    "PROJECT_SCOPE.md",
+    "README.en.md",
+    "README.md",
+    "docs/handoffs/README.md",
+    "scripts/project/block.json",
+    "scripts/project/check_instructions.py",
+    "scripts/project/handoff.py",
+    "scripts/project/preflight.sh",
+    "scripts/project/test_check_instructions.py",
+    "scripts/project/verify.sh"
+  ],
+  "commits": [
+    {
+      "sha": "b6f0846784083d9ec7a25e2932c4afc1fce9252a",
+      "subject": "W000: Zielrichtung in beiden READMEs benennen"
+    },
+    {
+      "sha": "4b978acbcd9b9f2e3e9e645d6eb1b4075c599a6f",
+      "subject": "W000: CI auf make verify vereinheitlichen"
+    },
+    {
+      "sha": "930f204a47782a20a06281a1243f23730f1ca854",
+      "subject": "W000: Arbeitsmaschine mit preflight, verify und handoff"
+    },
+    {
+      "sha": "3d04400e57355a130c706a72deb27d744a676de6",
+      "subject": "W000: Agenten-/Codex-Regeln für offenen Standard"
+    },
+    {
+      "sha": "d987f6e52cfbc2a83b362a97c7974cf180e9e176",
+      "subject": "W000: Claude-Anweisung für offenen Standard"
+    },
+    {
+      "sha": "400cac9cfabff0350ae2fcbee61296872faef38f",
+      "subject": "W000: Arbeitsregeln für offenen Standard festlegen"
+    },
+    {
+      "sha": "0a5ef31dad88b79e979935b05bc897c47b2cbc49",
+      "subject": "W000: öffentlichen Scope des Datenfluss-Standards neu festlegen"
+    }
+  ],
+  "commands_run": [
+    "make preflight",
+    "make verify"
+  ],
+  "results": {
+    "make preflight": "PASS",
+    "make verify": "PASS"
+  },
+  "known_failures": [],
+  "open_questions": [
+    "CONTRIBUTING.md und SECURITY.md liegen ausserhalb der allowed_paths dieses Blocks. CONTRIBUTING.md fuehrt mit \"Das Register bewertet nicht\" noch die abgeloeste Registererzaehlung als Projektgrundregel. Nicht angefasst; Scope-Erweiterung oder Folge-Work-Order noetig.",
+    "README.md und README.en.md beschreiben weiterhin v0.1. Die modulare Zielgeneration (Manifest, Claim-, Source-Modell, fuenf Evidenzdomaenen) ist W001 und wurde bewusst nicht vorgezogen.",
+    "make verify installiert jsonschema==4.23.0 bei Bedarf in eine Umgebung ausserhalb des Arbeitsbaums. Der erste Lauf auf einer neuen Maschine oder in CI braucht dafuer Netzzugriff.",
+    "Der Blockabschluss wird zentral im privaten Repository gefuehrt; dieses Repository hat bewusst kein make close. Die Freigabe von W000 ist offen."
+  ],
+  "approval": "OFFEN — ein Handoff ist keine Abnahme",
+  "next_step": "unabhaengige Gegenpruefung durch eine andere Instanz"
+}

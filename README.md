@@ -4,13 +4,19 @@
 
 *English guide: [README.en.md](README.en.md) – the specification's normative language is German.*
 
+> **Zielrichtung:** Datenfluss entwickelt sich zu einem offenen modularen
+> Standard für B2B-Evidenz; das Datenschutzmodell wird darin **ein Modul unter
+> mehreren**. Verbindlich für die Weiterentwicklung ist
+> [`PROJECT_SCOPE.md`](PROJECT_SCOPE.md). Diese README beschreibt den heute
+> implementierten Stand v0.1 — Bestandsbeschreibung, keine Zielvorgabe.
+
 Jede Organisation deklariert in einer signierbaren JSON-Datei, welche Personendaten sie zu welchen Zwecken bearbeitet, an wen sie fliessen und wie lange sie aufbewahrt werden. Die Datei liegt auf der eigenen Domain – nicht auf einer Plattform:
 
 ```
 https://www.beispielfirma.ch/.well-known/datenfluss.json
 ```
 
-Plattformen, Browser-Erweiterungen, Treuhänder-Software und Register können diese Dateien crawlen, validieren und darstellen. Der Standard gehört niemandem und braucht keinen bestimmten Anbieter, um zu funktionieren.
+Plattformen, Browser-Erweiterungen, Prüfsoftware und Verzeichnisse können diese Dateien crawlen, validieren und darstellen. Der Standard gehört niemandem und braucht keinen bestimmten Anbieter, um zu funktionieren.
 
 ## Dateien in diesem Paket
 
