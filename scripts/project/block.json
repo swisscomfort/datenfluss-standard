@@ -1,0 +1,46 @@
+{
+  "id": "W000",
+  "title": "Foundation — oeffentlicher Projektscope und Arbeitsmaschine",
+  "status": "IN_PROGRESS",
+  "authority": "Der vollstaendige Work Order wird zentral gefuehrt. Diese Datei ist der oeffentliche Spiegel der Angaben, die dieses Repository zur Selbstpruefung braucht - sie enthaelt bewusst keine privaten Geschaeftsinterna.",
+  "repository": "swisscomfort/datenfluss-standard",
+  "branch": "work/W000-foundation",
+  "base_sha": "a71dd0fb2f2067dd8d99042cc35a12680e88e59d",
+  "goal": "Den oeffentlichen Zielscope des Standards als offenen modularen Evidenzstandard verankern, die Agentenanweisungen davon ableiten und eine reproduzierbare Pruefmaschine bereitstellen, die lokal und in CI derselbe Pfad ist. Keine Aenderung an Spezifikation, Werkzeugen, Beispielen oder Profilen.",
+  "canonical_sources": [
+    "PROJECT_SCOPE.md",
+    "PROJECT_RULES.md",
+    "aktive Spezifikation und Konformitaetstests"
+  ],
+  "allowed_paths": [
+    "README.md",
+    "README.en.md",
+    "PROJECT_SCOPE.md",
+    "PROJECT_RULES.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "docs/**",
+    "Makefile",
+    "scripts/project/**",
+    ".github/workflows/**"
+  ],
+  "forbidden_paths": [
+    "spec/**",
+    "werkzeuge/**",
+    "beispiele/**",
+    "profile/**"
+  ],
+  "acceptance_commands": [
+    "make preflight",
+    "make verify",
+    "make handoff"
+  ],
+  "done_when": [
+    "Die Agentenanweisungen leiten sich aus PROJECT_SCOPE.md ab und behandeln keine frueheren Geschaefts-, Reader-, Register-, Treuhaender- oder Selbstwache-Erzaehlungen als Anforderung",
+    "Der oeffentliche Scope beschreibt Datenfluss als offenen modularen Evidenzstandard ohne private Geschaeftsinterna",
+    "make preflight, make verify und make handoff laufen reproduzierbar",
+    "CI verwendet denselben make verify-Pfad",
+    "Keine Datei aus forbidden_paths wurde veraendert",
+    "Unabhaengige Gegenpruefung ist ohne Blocker abgeschlossen"
+  ]
+}
