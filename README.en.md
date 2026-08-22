@@ -4,13 +4,19 @@
 
 *This is the English guide to the repository. The normative language of the specification is German ([README.md](README.md)); where the two disagree, the German text prevails. The standard's field names are German by design and identical in every language – the way `robots.txt` is English everywhere.*
 
+> **Direction of travel:** Datenfluss is evolving into an open, modular
+> standard for B2B evidence, in which the privacy model becomes **one module
+> among several**. The binding target scope is
+> [`PROJECT_SCOPE.md`](PROJECT_SCOPE.md) (German). This guide describes the
+> currently implemented v0.1 — a description of what exists, not a roadmap.
+
 Every organisation declares, in one signable JSON file, which personal data it processes, for which purposes, to which recipients it flows, and how long it is retained. The file lives on the organisation's own domain – not on any platform:
 
 ```
 https://www.example-company.ch/.well-known/datenfluss.json
 ```
 
-Platforms, browser extensions, fiduciary software and registers can crawl, validate and render these files. The standard belongs to no one and needs no particular vendor to work.
+Platforms, browser extensions, audit software and directories can crawl, validate and render these files. The standard belongs to no one and needs no particular vendor to work.
 
 ## What is in this package
 
